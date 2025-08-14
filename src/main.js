@@ -1,10 +1,12 @@
 const { app, BrowserWindow, ipcMain, Menu } = require('electron');
 const path = require('path');
+const DiscordClient = require('./discord/client');
 
 class LuniiApp {
   constructor() {
     this.mainWindow = null;
     this.isLoggedIn = false;
+    this.discordClient = new DiscordClient();
   }
 
   createWindow() {
@@ -44,16 +46,18 @@ class LuniiApp {
     // Handle login
     ipcMain.handle('login', async (event, token) => {
       try {
-        // Here we would validate the Discord token
         console.log('Login attempt with token:', token.substring(0, 10) + '...');
         
-        // For now, simulate successful login
-        this.isLoggedIn = true;
+        // Attempt Discord login
+        const result = await this.discordClient.login(token);
         
-        // Load main dashboard
-        this.mainWindow.loadFile('src/dashboard.html');
+        if (result.success) {
+          this.isLoggedIn = true;
+          // Load main dashboard
+          this.mainWindow.loadFile('src/dashboard.html');
+        }
         
-        return { success: true };
+        return result;
       } catch (error) {
         console.error('Login error:', error);
         return { success: false, error: error.message };
@@ -80,8 +84,12 @@ class LuniiApp {
     // Handle logout
     ipcMain.on('logout', () => {
       this.isLoggedIn = false;
+      this.discordClient.logout();
       this.mainWindow.loadFile('src/login.html');
     });
+
+    // Forward Discord IPC calls to the Discord client
+    // The Discord client handles its own IPC setup
   }
 
   init() {

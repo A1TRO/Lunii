@@ -86,12 +86,13 @@ class LoginManager {
             if (result.success) {
                 // Login successful - main process will handle navigation
                 console.log('Login successful');
+                console.log('User data:', result.user);
             } else {
-                this.showError(result.error || 'Login failed');
+                this.showError(result.error || 'Invalid token or login failed');
             }
         } catch (error) {
             console.error('Login error:', error);
-            this.showError('Connection error. Please try again.');
+            this.showError('Connection error. Please check your token and try again.');
         } finally {
             this.setLoading(false);
         }
