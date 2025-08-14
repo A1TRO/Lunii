@@ -1,1548 +1,719 @@
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-body {
-    font-family: 'Inter', sans-serif;
-    background: linear-gradient(135deg, #0B1426 0%, #1a2332 50%, #2a3441 100%);
-    color: #ffffff;
-    height: 100vh;
-    overflow: hidden;
-    -webkit-app-region: no-drag;
-}
-
-/* Title Bar */
-.title-bar {
-    height: 32px;
-    background: rgba(11, 20, 38, 0.8);
-    backdrop-filter: blur(20px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 16px;
-    -webkit-app-region: drag;
-    z-index: 1000;
-    position: relative;
-}
-
-.title-bar-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.app-logo svg {
-    width: 16px;
-    height: 16px;
-}
-
-.app-title {
-    font-size: 13px;
-    font-weight: 600;
-    color: #ffffff;
-    opacity: 0.9;
-}
-
-.title-bar-controls {
-    display: flex;
-    gap: 8px;
-    -webkit-app-region: no-drag;
-}
-
-.control-btn {
-    width: 24px;
-    height: 24px;
-    border: none;
-    background: rgba(255, 255, 255, 0.1);
-    color: #ffffff;
-    border-radius: 4px;
-    font-size: 12px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-}
-
-.control-btn:hover {
-    background: rgba(255, 255, 255, 0.2);
-}
-
-.control-btn.close:hover {
-    background: #ef4444;
-}
-
-/* Dashboard Container */
-.dashboard-container {
-    display: flex;
-    height: calc(100vh - 32px);
-}
-
-/* Sidebar */
-.sidebar {
-    width: 72px;
-    background: rgba(15, 23, 42, 0.6);
-    backdrop-filter: blur(20px);
-    border-right: 1px solid rgba(255, 255, 255, 0.1);
-    padding: 16px 0;
-    position: relative;
-}
-
-.sidebar::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(180deg, rgba(79, 70, 229, 0.1) 0%, transparent 50%, rgba(124, 58, 237, 0.1) 100%);
-    pointer-events: none;
-}
-
-.nav-menu {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    align-items: center;
-}
-
-.nav-item {
-    width: 48px;
-    height: 48px;
-    border: none;
-    background: rgba(255, 255, 255, 0.08);
-    border-radius: 16px;
-    color: rgba(255, 255, 255, 0.6);
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    overflow: hidden;
-}
-
-.nav-item::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-    transition: left 0.5s ease;
-}
-
-.nav-item:hover::before {
-    left: 100%;
-}
-
-.nav-item:hover {
-    background: rgba(255, 255, 255, 0.15);
-    color: rgba(255, 255, 255, 0.9);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(79, 70, 229, 0.2);
-}
-
-.nav-item.active {
-    background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
-    color: #ffffff;
-    box-shadow: 0 8px 25px rgba(79, 70, 229, 0.4);
-    transform: translateY(-1px);
-}
-
-.nav-item.active::after {
-    content: '';
-    position: absolute;
-    left: -2px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 4px;
-    height: 24px;
-    background: linear-gradient(180deg, #4F46E5 0%, #7C3AED 100%);
-    border-radius: 0 2px 2px 0;
-}
-
-/* Main Content */
-.main-content {
-    flex: 1;
-    padding: 24px;
-    overflow-y: auto;
-}
-
-.content-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 32px;
-}
-
-.greeting h1 {
-    font-size: 28px;
-    font-weight: 700;
-    color: #ffffff;
-}
-
-.greeting span {
-    background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-.header-actions {
-    display: flex;
-    gap: 12px;
-}
-
-.switch-account-btn, .add-account-btn {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 12px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    font-family: 'Inter', sans-serif;
-}
-
-.switch-account-btn {
-    background: rgba(79, 70, 229, 0.2);
-    color: #4F46E5;
-    border: 1px solid rgba(79, 70, 229, 0.3);
-}
-
-.switch-account-btn:hover {
-    background: rgba(79, 70, 229, 0.3);
-    transform: translateY(-1px);
-}
-
-.add-account-btn {
-    background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
-    color: #ffffff;
-}
-
-.add-account-btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 8px 25px rgba(79, 70, 229, 0.3);
-}
-
-/* Dashboard Grid */
-.dashboard-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 24px;
-    height: calc(100vh - 120px);
-}
-
-/* Panel Base Styles */
-.panel {
-    background: rgba(15, 23, 42, 0.4);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 20px;
-    padding: 24px;
-    animation: fadeIn 0.6s ease-out;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-/* Profile Panel */
-.profile-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-
-.profile-header {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    margin-bottom: 8px;
-}
-
-.avatar-container {
-    position: relative;
-}
-
-.avatar {
-    width: 64px;
-    height: 64px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
-    border: 3px solid rgba(79, 70, 229, 0.3);
-}
-
-.status-indicator {
-    position: absolute;
-    bottom: -2px;
-    right: -2px;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    border: 3px solid rgba(15, 23, 42, 0.8);
-}
-
-.status-indicator.online {
-    background: #22c55e;
-    box-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
-}
-
-.profile-info {
-    flex: 1;
-}
-
-.profile-info h3 {
-    font-size: 18px;
-    font-weight: 600;
-    color: #ffffff;
-    margin-bottom: 4px;
-}
-
-.profile-info p {
-    font-size: 14px;
-    color: rgba(255, 255, 255, 0.6);
-}
-
-.profile-badges {
-    display: flex;
-    gap: 8px;
-}
-
-.badge {
-    width: 24px;
-    height: 24px;
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-}
-
-.badge.nitro {
-    background: linear-gradient(135deg, #9333ea 0%, #c084fc 100%);
-    color: #ffffff;
-}
-
-.badge.boost {
-    background: linear-gradient(135deg, #f472b6 0%, #ec4899 100%);
-    color: #ffffff;
-}
-
-.badge.early-supporter {
-    background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
-    color: #ffffff;
-}
-
-/* Stats */
-.profile-stats {
-    margin: 16px 0;
-}
-
-.stat-group {
-    display: flex;
-    gap: 32px;
-    justify-content: center;
-}
-
-.stat-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-}
-
-.stat-circle {
-    position: relative;
-    width: 80px;
-    height: 80px;
-}
-
-.stat-progress {
-    width: 100%;
-    height: 100%;
-    transform: rotate(-90deg);
-}
-
-.stat-bg {
-    fill: none;
-    stroke: rgba(255, 255, 255, 0.1);
-    stroke-width: 2;
-}
-
-.stat-fill {
-    fill: none;
-    stroke-width: 2;
-    stroke-linecap: round;
-    transition: stroke-dasharray 1s ease-in-out;
-}
-
-.servers-fill {
-    stroke: #4F46E5;
-}
-
-.friends-fill {
-    stroke: #22c55e;
-}
-
-.stat-text {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    text-align: center;
-    font-weight: 600;
-}
-
-.stat-value {
-    font-size: 16px;
-    color: #ffffff;
-}
-
-.stat-max {
-    font-size: 12px;
-    color: rgba(255, 255, 255, 0.5);
-}
-
-.stat-label {
-    font-size: 11px;
-    font-weight: 500;
-    color: rgba(255, 255, 255, 0.6);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-/* Profile Details */
-.profile-details {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.detail-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 13px;
-}
-
-.detail-label {
-    color: rgba(255, 255, 255, 0.6);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.detail-value {
-    color: #ffffff;
-    font-weight: 500;
-}
-
-.status-inactive {
-    color: rgba(255, 255, 255, 0.5);
-}
-
-.status-active {
-    color: #22c55e;
-}
-
-.uptime-item .uptime-display {
-    font-family: 'JetBrains Mono', monospace;
-    display: flex;
-    gap: 4px;
-    font-size: 12px;
-}
-
-.uptime-display span {
-    background: rgba(255, 255, 255, 0.1);
-    padding: 2px 6px;
-    border-radius: 4px;
-    min-width: 20px;
-    text-align: center;
-}
-
-/* Profile Actions */
-.profile-actions {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px 0;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.version-info, .commands-info {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 13px;
-    color: rgba(255, 255, 255, 0.6);
-}
-
-.version-number, .commands-count {
-    color: #ffffff;
-    font-weight: 600;
-}
-
-/* Toggles */
-.profile-toggles {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-}
-
-.toggle-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 14px;
-    color: #ffffff;
-}
-
-.toggle-switch {
-    position: relative;
-}
-
-.toggle-switch input {
-    display: none;
-}
-
-.toggle-switch label {
-    display: block;
-    width: 44px;
-    height: 24px;
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 12px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    position: relative;
-}
-
-.toggle-switch label::after {
-    content: '';
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    width: 20px;
-    height: 20px;
-    background: #ffffff;
-    border-radius: 50%;
-    transition: all 0.3s ease;
-}
-
-.toggle-switch input:checked + label {
-    background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
-}
-
-.toggle-switch input:checked + label::after {
-    transform: translateX(20px);
-}
-
-/* Custom Status Section */
-.custom-status-section {
-    margin-top: 20px;
-    padding-top: 20px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.custom-status-section h4 {
-    font-size: 14px;
-    font-weight: 600;
-    color: #ffffff;
-    margin-bottom: 12px;
-}
-
-.status-input-group {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 12px;
-}
-
-.status-input-group input {
-    flex: 1;
-    height: 36px;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 8px;
-    padding: 0 12px;
-    color: #ffffff;
-    font-size: 13px;
-}
-
-.status-input-group select {
-    height: 36px;
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 8px;
-    padding: 0 12px;
-    color: #ffffff;
-    font-size: 13px;
-    min-width: 120px;
-}
-
-.status-actions {
-    display: flex;
-    gap: 8px;
-}
-
-.status-btn {
-    padding: 8px 16px;
-    border: none;
-    border-radius: 8px;
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
-    color: #ffffff;
-}
-
-.status-btn.secondary {
-    background: rgba(255, 255, 255, 0.1);
-    color: rgba(255, 255, 255, 0.9);
-}
-
-.status-btn:hover {
-    transform: translateY(-1px);
-}
-
-/* Notification Panel */
-.notification-panel {
-    display: flex;
-    flex-direction: column;
-}
-
-.panel-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-}
-
-.panel-title {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 16px;
-    font-weight: 600;
-    color: #ffffff;
-    position: relative;
-}
-
-.notification-count {
-    background: #ef4444;
-    color: #ffffff;
-    font-size: 11px;
-    font-weight: 600;
-    padding: 2px 6px;
-    border-radius: 10px;
-    min-width: 18px;
-    text-align: center;
-    margin-left: 8px;
-}
-
-.panel-action {
-    background: none;
-    border: none;
-    color: rgba(255, 255, 255, 0.6);
-    cursor: pointer;
-    padding: 4px;
-    border-radius: 6px;
-    transition: all 0.3s ease;
-}
-
-.panel-action:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: #ffffff;
-}
-
-/* Notifications */
-.notifications-list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    overflow-y: auto;
-}
-
-.notification-item {
-    display: flex;
-    gap: 12px;
-    padding: 16px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: 12px;
-    transition: all 0.3s ease;
-}
-
-.notification-item:hover {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.1);
-}
-
-.notification-icon {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-}
-
-.notification-icon.info {
-    background: rgba(59, 130, 246, 0.2);
-    color: #3b82f6;
-}
-
-.notification-icon.success {
-    background: rgba(34, 197, 94, 0.2);
-    color: #22c55e;
-}
-
-.notification-icon.error {
-    background: rgba(239, 68, 68, 0.2);
-    color: #ef4444;
-}
-
-.notification-content {
-    flex: 1;
-}
-
-.notification-text {
-    font-size: 14px;
-    color: #ffffff;
-    line-height: 1.4;
-    margin-bottom: 4px;
-}
-
-.notification-meta {
-    display: flex;
-    gap: 8px;
-    font-size: 12px;
-    color: rgba(255, 255, 255, 0.5);
-}
-
-.notification-time {
-    font-weight: 500;
-}
-
-.notification-channel {
-    opacity: 0.8;
-}
-
-.notification-actions {
-    display: flex;
-    align-items: flex-start;
-}
-
-.notification-action {
-    background: none;
-    border: none;
-    color: rgba(255, 255, 255, 0.4);
-    cursor: pointer;
-    padding: 4px;
-    border-radius: 4px;
-    transition: all 0.3s ease;
-}
-
-.notification-action:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: rgba(255, 255, 255, 0.7);
-}
-
-/* Quick Actions */
-.quick-actions {
-    display: flex;
-    gap: 8px;
-    margin-top: 16px;
-    padding-top: 16px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.quick-action-btn {
-    flex: 1;
-    padding: 8px 12px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    color: rgba(255, 255, 255, 0.8);
-    font-size: 12px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-}
-
-.quick-action-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: #ffffff;
-}
-
-/* Page Content */
-.page-content {
-    padding: 24px;
-}
-
-.page-content h2 {
-    font-size: 24px;
-    font-weight: 700;
-    color: #ffffff;
-    margin-bottom: 24px;
-}
-
-/* Profile Settings */
-.profile-settings {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-
-.setting-group {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.setting-group label {
-    font-size: 14px;
-    font-weight: 500;
-    color: rgba(255, 255, 255, 0.8);
-}
-
-.setting-group input,
-.setting-group textarea,
-.setting-group select {
-    background: rgba(15, 23, 42, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 8px;
-    padding: 12px;
-    color: #ffffff;
-    font-size: 14px;
-}
-
-/* Friends List */
-.friends-list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
-.friend-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px;
-    background: rgba(15, 23, 42, 0.4);
-    border-radius: 12px;
-}
-
-.friend-avatar {
-    position: relative;
-}
-
-.friend-avatar img {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-}
-
-.status-dot {
-    position: absolute;
-    bottom: -2px;
-    right: -2px;
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    border: 2px solid rgba(15, 23, 42, 0.8);
-}
-
-.status-dot.online {
-    background: #22c55e;
-}
-
-.friend-info {
-    display: flex;
-    flex-direction: column;
-}
-
-.friend-name {
-    font-weight: 600;
-    color: #ffffff;
-}
-
-.friend-status {
-    font-size: 12px;
-    color: rgba(255, 255, 255, 0.6);
-}
-
-/* Servers Grid */
-.servers-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 16px;
-}
-
-.server-card {
-    background: rgba(15, 23, 42, 0.4);
-    border-radius: 12px;
-    padding: 16px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.server-icon img {
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
-}
-
-.server-info h4 {
-    color: #ffffff;
-    margin-bottom: 4px;
-}
-
-.server-info p {
-    color: rgba(255, 255, 255, 0.6);
-    font-size: 12px;
-}
-
-/* Automation Settings */
-.automation-settings {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-}
-
-.feature-card {
-    background: rgba(15, 23, 42, 0.4);
-    border-radius: 12px;
-    padding: 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.feature-card h4 {
-    color: #ffffff;
-    margin-bottom: 4px;
-}
-
-.feature-card p {
-    color: rgba(255, 255, 255, 0.6);
-    font-size: 14px;
-}
-
-/* Command History */
-.command-history {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.command-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px;
-    background: rgba(15, 23, 42, 0.4);
-    border-radius: 8px;
-}
-
-.command-text {
-    font-family: 'JetBrains Mono', monospace;
-    color: #ffffff;
-}
-
-.command-time {
-    color: rgba(255, 255, 255, 0.6);
-    font-size: 12px;
-}
-
-/* Settings Sections */
-.settings-sections {
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-}
-
-.settings-section {
-    background: rgba(15, 23, 42, 0.4);
-    border-radius: 12px;
-    padding: 20px;
-}
-
-.settings-section h4 {
-    color: #ffffff;
-    margin-bottom: 16px;
-}
-
-.setting-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.setting-item:last-child {
-    border-bottom: none;
-}
-
-.setting-input {
-    background: rgba(15, 23, 42, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 6px;
-    padding: 8px 12px;
-    color: #ffffff;
-    font-size: 13px;
-    width: 200px;
-}
-
-.setting-input:focus {
-    outline: none;
-    border-color: rgba(79, 70, 229, 0.5);
-    box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
-}
-
-/* Server Management Styles */
-.server-management-container {
-    display: grid;
-    grid-template-columns: 1fr 400px;
-    gap: 24px;
-    height: calc(100vh - 200px);
-}
-
-.server-list-section {
-    display: flex;
-    flex-direction: column;
-}
-
-.section-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-}
-
-.section-header h3 {
-    font-size: 18px;
-    font-weight: 600;
-    color: #ffffff;
-}
-
-.server-actions {
-    display: flex;
-    gap: 8px;
-}
-
-.action-btn {
-    padding: 8px 16px;
-    border: none;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.action-btn.primary {
-    background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
-    color: #ffffff;
-}
-
-.action-btn.secondary {
-    background: rgba(255, 255, 255, 0.1);
-    color: rgba(255, 255, 255, 0.9);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.action-btn:hover {
-    transform: translateY(-1px);
-}
-
-.servers-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 16px;
-    overflow-y: auto;
-    max-height: calc(100vh - 300px);
-}
-
-.server-card {
-    background: rgba(15, 23, 42, 0.4);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    padding: 16px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.server-card:hover {
-    background: rgba(15, 23, 42, 0.6);
-    border-color: rgba(79, 70, 229, 0.3);
-    transform: translateY(-2px);
-}
-
-.server-card.selected {
-    border-color: #4F46E5;
-    background: rgba(79, 70, 229, 0.1);
-}
-
-.server-icon {
-    position: relative;
-}
-
-.server-icon img {
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
-}
-
-.loading-placeholder {
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
-    background: linear-gradient(90deg, rgba(255, 255, 255, 0.1) 25%, rgba(255, 255, 255, 0.2) 50%, rgba(255, 255, 255, 0.1) 75%);
-    background-size: 200% 100%;
-    animation: loading 1.5s infinite;
-}
-
-@keyframes loading {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
-}
-
-.server-details-section {
-    background: rgba(15, 23, 42, 0.4);
-    border-radius: 16px;
-    padding: 20px;
-    overflow-y: auto;
-}
-
-.close-details-btn {
-    background: none;
-    border: none;
-    color: rgba(255, 255, 255, 0.6);
-    font-size: 20px;
-    cursor: pointer;
-    padding: 4px;
-    border-radius: 4px;
-    transition: all 0.3s ease;
-}
-
-.close-details-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: #ffffff;
-}
-
-.server-overview {
-    display: flex;
-    gap: 16px;
-    margin-bottom: 24px;
-    padding-bottom: 20px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.server-avatar img {
-    width: 64px;
-    height: 64px;
-    border-radius: 16px;
-}
-
-.server-meta h4 {
-    font-size: 18px;
-    font-weight: 600;
-    color: #ffffff;
-    margin-bottom: 4px;
-}
-
-.server-meta p {
-    font-size: 13px;
-    color: rgba(255, 255, 255, 0.6);
-    margin-bottom: 2px;
-}
-
-.server-actions-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-bottom: 24px;
-}
-
-.server-action-btn {
-    padding: 12px 16px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    color: rgba(255, 255, 255, 0.9);
-    font-size: 13px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.server-action-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-    transform: translateY(-1px);
-}
-
-.server-action-btn.danger {
-    border-color: rgba(239, 68, 68, 0.3);
-    color: #fca5a5;
-}
-
-.server-action-btn.danger:hover {
-    background: rgba(239, 68, 68, 0.1);
-    border-color: rgba(239, 68, 68, 0.5);
-}
-
-/* Command Center Styles */
-.command-center-container {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto 1fr;
-    gap: 24px;
-    height: calc(100vh - 200px);
-}
-
-.command-builder-section {
-    grid-column: 1 / -1;
-    background: rgba(15, 23, 42, 0.4);
-    border-radius: 16px;
-    padding: 20px;
-}
-
-.command-builder {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-}
-
-.command-builder .input-group {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.command-builder .input-group:nth-child(3) {
-    grid-column: 1 / -1;
-}
-
-.command-builder .input-group:nth-child(4) {
-    grid-column: 1 / -1;
-}
-
-.command-builder .command-actions {
-    grid-column: 1 / -1;
-    display: flex;
-    gap: 12px;
-    justify-content: flex-end;
-}
-
-.command-builder label {
-    font-size: 13px;
-    font-weight: 500;
-    color: rgba(255, 255, 255, 0.8);
-}
-
-.command-builder input,
-.command-builder select,
-.command-builder textarea {
-    background: rgba(15, 23, 42, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 8px;
-    padding: 10px 12px;
-    color: #ffffff;
-    font-size: 14px;
-}
-
-.command-builder textarea {
-    resize: vertical;
-    min-height: 80px;
-}
-
-.saved-commands-section,
-.command-history-section {
-    background: rgba(15, 23, 42, 0.4);
-    border-radius: 16px;
-    padding: 20px;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-}
-
-.commands-list,
-.command-history {
-    flex: 1;
-    overflow-y: auto;
-}
-
-.saved-command-item {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    padding: 12px;
-    margin-bottom: 8px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.command-info h5 {
-    color: #ffffff;
-    font-size: 14px;
-    margin-bottom: 4px;
-}
-
-.command-info p {
-    color: rgba(255, 255, 255, 0.6);
-    font-size: 12px;
-}
-
-.command-item-actions {
-    display: flex;
-    gap: 8px;
-}
-
-.command-item-btn {
-    padding: 4px 8px;
-    background: rgba(255, 255, 255, 0.1);
-    border: none;
-    border-radius: 4px;
-    color: rgba(255, 255, 255, 0.8);
-    font-size: 11px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.command-item-btn:hover {
-    background: rgba(255, 255, 255, 0.2);
-}
-
-/* Messaging Styles */
-.messaging-container {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: 24px;
-    height: calc(100vh - 200px);
-}
-
-.message-composer-section,
-.message-templates-section {
-    background: rgba(15, 23, 42, 0.4);
-    border-radius: 16px;
-    padding: 20px;
-    overflow-y: auto;
-}
-
-.message-type-tabs {
-    display: flex;
-    gap: 8px;
-}
-
-.tab-btn {
-    padding: 6px 12px;
-    background: rgba(255, 255, 255, 0.1);
-    border: none;
-    border-radius: 6px;
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 12px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.tab-btn.active {
-    background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
-    color: #ffffff;
-}
-
-.message-composer {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-}
-
-.target-selector {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-}
-
-.message-options {
-    display: flex;
-    gap: 16px;
-}
-
-.message-actions {
-    display: flex;
-    gap: 12px;
-    justify-content: flex-end;
-}
-
-/* Backup Styles */
-.backup-container {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 24px;
-    height: calc(100vh - 200px);
-}
-
-.backup-section,
-.clone-section {
-    background: rgba(15, 23, 42, 0.4);
-    border-radius: 16px;
-    padding: 20px;
-    overflow-y: auto;
-}
-
-.option-group h4 {
-    color: #ffffff;
-    font-size: 14px;
-    margin-bottom: 12px;
-}
-
-.backup-options,
-.clone-options {
-    margin-bottom: 24px;
-}
-
-.clone-actions {
-    display: flex;
-    justify-content: flex-end;
-}
-
-/* Feature Controls */
-.feature-controls {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.config-btn {
-    padding: 6px 12px;
-    background: rgba(79, 70, 229, 0.2);
-    border: 1px solid rgba(79, 70, 229, 0.3);
-    border-radius: 6px;
-    color: #a5b4fc;
-    font-size: 12px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.config-btn:hover {
-    background: rgba(79, 70, 229, 0.3);
-    color: #c7d2fe;
-}
-
-/* Empty State */
-.empty-state {
-    text-align: center;
-    padding: 40px 20px;
-    color: rgba(255, 255, 255, 0.5);
-}
-
-.empty-state p {
-    font-size: 16px;
-    margin-bottom: 8px;
-}
-
-.empty-state span {
-    font-size: 14px;
-    opacity: 0.7;
-}
-
-/* Custom Scrollbars */
-::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-}
-
-::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 4px;
-    transition: background 0.3s ease;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.3);
-}
-
-::-webkit-scrollbar-corner {
-    background: rgba(255, 255, 255, 0.05);
-}
-
-/* Firefox scrollbars */
-* {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.2) rgba(255, 255, 255, 0.05);
-}
-/* Responsive Design */
-@media (max-width: 1200px) {
-    .dashboard-grid {
-        grid-template-columns: 1fr;
-        gap: 20px;
+const { Client } = require('discord.js-selfbot-v13');
+const { ipcMain } = require('electron');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+const fs = require('fs');
+const path = require('path');
+
+class DiscordClient {
+    constructor() {
+        this.client = null;
+        this.isReady = false;
+        this.userCache = new Map();
+        this.guildCache = new Map();
+        this.stats = {
+            commandsUsed: 0,
+            messagesReceived: 0,
+            startTime: Date.now()
+        };
+        this.geminiAI = null;
+        this.giveawayBots = new Set([
+            '294882584201003009', // GiveawayBot
+            '396464677032427530', // Carl-bot
+            '235148962103951360', // Dyno
+            '159985870458322944', // Mee6
+            '270904126974590976', // Tatsumaki
+            '155149108183695360', // Dank Memer
+            '432610292342587392', // GiveawayBot (alternative)
+            '716390085896962058', // Giveaway Boat
+        ]);
+        this.afkSettings = {
+            enabled: false,
+            message: "I'm currently AFK. I'll get back to you soon!",
+            startTime: null
+        };
+        this.savedCommands = this.loadSavedCommands();
+        
+        this.setupIPC();
+    }
+
+    setupIPC() {
+        // Handle login requests
+        ipcMain.handle('discord-login', async (event, token) => {
+            try {
+                return await this.login(token);
+            } catch (error) {
+                console.error('Discord login error:', error);
+                return { success: false, error: error.message };
+            }
+        });
+
+        // Handle logout requests
+        ipcMain.handle('discord-logout', async () => {
+            try {
+                await this.logout();
+                return { success: true };
+            } catch (error) {
+                return { success: false, error: error.message };
+            }
+        });
+
+        // Handle user data requests
+        ipcMain.handle('discord-get-user-data', () => {
+            return this.getUserData();
+        });
+
+        // Handle stats requests
+        ipcMain.handle('discord-get-stats', () => {
+            return this.getStats();
+        });
+
+        // Handle setting updates
+        ipcMain.handle('discord-update-setting', async (event, setting, value) => {
+            return await this.updateSetting(setting, value);
+        });
+        
+        // Handle friends requests
+        ipcMain.handle('discord-get-friends', () => {
+            return this.getFriends();
+        });
+        
+        // Handle servers requests
+        ipcMain.handle('discord-get-servers', () => {
+            return this.getServers();
+        });
+        
+        // Handle server details
+        ipcMain.handle('discord-get-server-details', (event, serverId) => {
+            return this.getServerDetails(serverId);
+        });
+        
+        // Handle messaging
+        ipcMain.handle('discord-send-message', async (event, data) => {
+            return await this.sendMessage(data);
+        });
+        
+        // Handle command operations
+        ipcMain.handle('discord-save-command', (event, command) => {
+            return this.saveCommand(command);
+        });
+        
+        ipcMain.handle('discord-get-saved-commands', () => {
+            return this.getSavedCommands();
+        });
+        
+        ipcMain.handle('discord-execute-command', async (event, command) => {
+            return await this.executeCommand(command);
+        });
+        
+        // Handle AI assistance
+        ipcMain.handle('discord-ai-assist', async (event, prompt) => {
+            return await this.getAIAssistance(prompt);
+        });
+        
+        // Handle server backup/clone
+        ipcMain.handle('discord-backup-server', async (event, serverId, options) => {
+            return await this.backupServer(serverId, options);
+        });
+        
+        ipcMain.handle('discord-clone-server', async (event, serverId, newName) => {
+            return await this.cloneServer(serverId, newName);
+        });
+        
+        // Handle AFK settings
+        ipcMain.handle('discord-set-afk', (event, settings) => {
+            return this.setAFK(settings);
+        });
+    }
+
+    async login(token) {
+        if (this.client) {
+            await this.logout();
+        }
+
+        this.client = new Client({
+            checkUpdate: false,
+            syncStatus: false,
+            autoRedeemNitro: false
+        });
+
+        return new Promise((resolve) => {
+            const timeout = setTimeout(() => {
+                resolve({ success: false, error: 'Login timeout' });
+            }, 30000);
+
+            this.client.once('ready', async () => {
+                clearTimeout(timeout);
+                this.isReady = true;
+                this.stats.startTime = Date.now();
+                
+                // Cache user data
+                await this.cacheUserData();
+                
+                // Setup event listeners
+                this.setupEventListeners();
+                
+                resolve({ 
+                    success: true, 
+                    user: this.getUserData() 
+                });
+            });
+
+            this.client.on('error', (error) => {
+                clearTimeout(timeout);
+                console.error('Discord client error:', error);
+                resolve({ success: false, error: error.message });
+            });
+
+            // Attempt login
+            this.client.login(token).catch((error) => {
+                clearTimeout(timeout);
+                console.error('Login failed:', error);
+                resolve({ success: false, error: 'Invalid token or login failed' });
+            });
+        });
+    }
+
+    async logout() {
+        if (this.client) {
+            this.isReady = false;
+            await this.client.destroy();
+            this.client = null;
+            this.userCache.clear();
+            this.guildCache.clear();
+        }
+    }
+
+    async cacheUserData() {
+        if (!this.client || !this.isReady) return;
+
+        try {
+            // Cache guilds
+            this.client.guilds.cache.forEach(guild => {
+                this.guildCache.set(guild.id, {
+                    id: guild.id,
+                    name: guild.name,
+                    icon: guild.iconURL(),
+                    memberCount: guild.memberCount,
+                    owner: guild.ownerId === this.client.user.id
+                });
+            });
+
+            // Cache friends
+            if (this.client.relationships) {
+                this.client.relationships.cache.forEach(relationship => {
+                    if (relationship.type === 1) { // Friends
+                        this.userCache.set(relationship.user.id, {
+                            id: relationship.user.id,
+                            username: relationship.user.username,
+                            discriminator: relationship.user.discriminator,
+                            avatar: relationship.user.displayAvatarURL(),
+                            status: relationship.user.presence?.status || 'offline'
+                        });
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Error caching user data:', error);
+        }
+    }
+
+    setupEventListeners() {
+        if (!this.client) return;
+
+        // Message events
+        this.client.on('messageCreate', (message) => {
+            this.stats.messagesReceived++;
+            
+            // Check for mentions
+            if (message.mentions.has(this.client.user)) {
+                this.sendNotification({
+                    type: 'mention',
+                    title: 'You got pinged!',
+                    content: message.content,
+                    author: message.author.username,
+                    channel: message.channel.name || 'DM',
+                    guild: message.guild?.name || 'Direct Message',
+                    timestamp: Date.now()
+                });
+            }
+            
+            // Check for giveaway keywords
+            const giveawayKeywords = ['🎉', 'giveaway', 'react', 'win', 'prize', 'enter', 'participate'];
+            const hasGiveawayKeyword = giveawayKeywords.some(keyword => 
+                message.content.toLowerCase().includes(keyword.toLowerCase())
+            );
+            
+            // Enhanced giveaway detection
+            if (hasGiveawayKeyword && message.guild && this.isVerifiedGiveawayBot(message.author)) {
+                this.sendNotification({
+                    type: 'success',
+                    title: 'Giveaway Detected',
+                    content: `Verified giveaway found in ${message.guild.name}`,
+                    author: message.author.username,
+                    channel: message.channel.name,
+                    guild: message.guild.name,
+                    timestamp: Date.now()
+                });
+                
+                // Auto-join if enabled
+                if (this.settings?.autoGiveaway) {
+                    this.autoJoinGiveaway(message);
+                }
+            }
+            
+            // AFK auto-reply
+            if (this.afkSettings.enabled && message.mentions.has(this.client.user)) {
+                this.handleAFKReply(message);
+            }
+        });
+
+        // Presence updates
+        this.client.on('presenceUpdate', (oldPresence, newPresence) => {
+            if (this.userCache.has(newPresence.userId)) {
+                const cached = this.userCache.get(newPresence.userId);
+                cached.status = newPresence.status;
+                this.userCache.set(newPresence.userId, cached);
+            }
+        });
+
+        // Guild events
+        this.client.on('guildCreate', (guild) => {
+            this.guildCache.set(guild.id, {
+                id: guild.id,
+                name: guild.name,
+                icon: guild.iconURL(),
+                memberCount: guild.memberCount,
+                owner: guild.ownerId === this.client.user.id
+            });
+            
+            this.sendNotification({
+                type: 'success',
+                title: 'Joined new server',
+                content: `You joined ${guild.name}`,
+                timestamp: Date.now()
+            });
+        });
+
+        this.client.on('guildDelete', (guild) => {
+            this.guildCache.delete(guild.id);
+            
+            this.sendNotification({
+                type: 'warning',
+                title: 'Left server',
+                content: `You left ${guild.name}`,
+                timestamp: Date.now()
+            });
+        });
+        
+        // Relationship events
+        this.client.on('relationshipAdd', (relationship) => {
+            if (relationship.type === 1) { // Friend
+                this.userCache.set(relationship.user.id, {
+                    id: relationship.user.id,
+                    username: relationship.user.username,
+                    discriminator: relationship.user.discriminator,
+                    avatar: relationship.user.displayAvatarURL(),
+                    status: relationship.user.presence?.status || 'offline'
+                });
+                
+                this.sendNotification({
+                    type: 'success',
+                    title: 'New Friend',
+                    content: `${relationship.user.username} is now your friend`,
+                    timestamp: Date.now()
+                });
+            }
+        });
+        
+        this.client.on('relationshipRemove', (relationship) => {
+            if (relationship.type === 1) { // Friend
+                this.userCache.delete(relationship.user.id);
+                
+                this.sendNotification({
+                    type: 'error',
+                    title: 'Friend Removed',
+                    content: `${relationship.user.username} is no longer your friend`,
+                    timestamp: Date.now()
+                });
+            }
+        });
     }
     
-    .panel {
-        padding: 20px;
+    isVerifiedGiveawayBot(author) {
+        return this.giveawayBots.has(author.id) || author.bot;
     }
     
-    .server-management-container,
-    .command-center-container,
-    .messaging-container,
-    .backup-container {
-        grid-template-columns: 1fr;
+    async autoJoinGiveaway(message) {
+        try {
+            // Look for reaction emojis in the message
+            const reactionEmojis = ['🎉', '🎊', '🎁', '✨'];
+            
+            for (const emoji of reactionEmojis) {
+                if (message.content.includes(emoji)) {
+                    await message.react(emoji);
+                    this.incrementCommandUsage();
+                    break;
+                }
+            }
+        } catch (error) {
+            console.error('Error auto-joining giveaway:', error);
+        }
+    }
+    
+    async handleAFKReply(message) {
+        try {
+            const afkDuration = Date.now() - this.afkSettings.startTime;
+            const hours = Math.floor(afkDuration / (1000 * 60 * 60));
+            const minutes = Math.floor((afkDuration % (1000 * 60 * 60)) / (1000 * 60));
+            
+            let replyMessage = this.afkSettings.message;
+            if (hours > 0) {
+                replyMessage += ` (AFK for ${hours}h ${minutes}m)`;
+            } else if (minutes > 0) {
+                replyMessage += ` (AFK for ${minutes}m)`;
+            }
+            
+            await message.reply(replyMessage);
+        } catch (error) {
+            console.error('Error sending AFK reply:', error);
+        }
+    }
+
+    getUserData() {
+        if (!this.client || !this.isReady || !this.client.user) {
+            return null;
+        }
+
+        const user = this.client.user;
+        const nitroType = user.premiumType;
+        
+        return {
+            id: user.id,
+            username: user.username,
+            discriminator: user.discriminator,
+            handle: user.tag,
+            avatar: user.displayAvatarURL({ size: 128 }),
+            nitro: nitroType > 0,
+            nitroType: nitroType,
+            verified: user.verified,
+            mfaEnabled: user.mfaEnabled,
+            createdAt: user.createdAt,
+            badges: this.getUserBadges(user),
+            servers: this.guildCache.size,
+            friends: this.userCache.size,
+            status: user.presence?.status || 'online',
+            customStatus: user.presence?.activities?.find(a => a.type === 'CUSTOM')?.state || null
+        };
+    }
+    
+    getUserBadges(user) {
+        const badges = [];
+        
+        if (user.premiumType > 0) badges.push('NITRO');
+        if (user.flags) {
+            if (user.flags.has('EARLY_SUPPORTER')) badges.push('EARLY_SUPPORTER');
+            if (user.flags.has('HYPESQUAD_EVENTS')) badges.push('HYPESQUAD_EVENTS');
+            if (user.flags.has('HOUSE_BRAVERY')) badges.push('HOUSE_BRAVERY');
+            if (user.flags.has('HOUSE_BRILLIANCE')) badges.push('HOUSE_BRILLIANCE');
+            if (user.flags.has('HOUSE_BALANCE')) badges.push('HOUSE_BALANCE');
+            //if (user.flags.has('VERIFIED_DEVELOPER')) badges.push('VERIFIED_DEVELOPER');
+        }
+        
+        return badges;
+    }
+    
+    getFriends() {
+        return Array.from(this.userCache.values());
+    }
+    
+    getServers() {
+        return Array.from(this.guildCache.values());
+    }
+    
+    getServerDetails(serverId) {
+        const guild = this.client.guilds.cache.get(serverId);
+        if (!guild) return null;
+        
+        return {
+            id: guild.id,
+            name: guild.name,
+            icon: guild.iconURL({ size: 128 }),
+            memberCount: guild.memberCount,
+            channels: guild.channels.cache.map(channel => ({
+                id: channel.id,
+                name: channel.name,
+                type: channel.type,
+                position: channel.position
+            })),
+            emojis: guild.emojis.cache.map(emoji => ({
+                id: emoji.id,
+                name: emoji.name,
+                url: emoji.url,
+                animated: emoji.animated
+            })),
+            stickers: guild.stickers.cache.map(sticker => ({
+                id: sticker.id,
+                name: sticker.name,
+                description: sticker.description,
+                url: sticker.url
+            })),
+            roles: guild.roles.cache.map(role => ({
+                id: role.id,
+                name: role.name,
+                color: role.hexColor,
+                position: role.position
+            }))
+        };
+    }
+    
+    async sendMessage(data) {
+        try {
+            const { type, target, content, options = {} } = data;
+            let channel;
+            
+            if (type === 'channel') {
+                channel = this.client.channels.cache.get(target);
+            } else if (type === 'dm') {
+                const user = this.client.users.cache.get(target);
+                if (user) {
+                    channel = await user.createDM();
+                }
+            }
+            
+            if (!channel) {
+                return { success: false, error: 'Channel or user not found' };
+            }
+            
+            const messageOptions = {
+                content: content,
+                tts: options.tts || false
+            };
+            
+            if (options.embed) {
+                messageOptions.embeds = [{
+                    description: content,
+                    color: 0x4F46E5
+                }];
+                messageOptions.content = '';
+            }
+            
+            const sentMessage = await channel.send(messageOptions);
+            this.incrementCommandUsage();
+            
+            return {
+                success: true,
+                messageId: sentMessage.id,
+                channelId: sentMessage.channel.id
+            };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+    
+    saveCommand(command) {
+        try {
+            this.savedCommands.push({
+                ...command,
+                id: Date.now().toString(),
+                createdAt: new Date().toISOString()
+            });
+            
+            this.saveSavedCommands();
+            return { success: true };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+    
+    getSavedCommands() {
+        return this.savedCommands;
+    }
+    
+    async executeCommand(command) {
+        try {
+            // This would execute the saved command
+            // Implementation depends on command type
+            this.incrementCommandUsage();
+            return { success: true };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+    
+    async getAIAssistance(prompt) {
+        try {
+            if (!this.geminiAI) {
+                return { success: false, error: 'Gemini AI not configured' };
+            }
+            
+            const model = this.geminiAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+            const result = await model.generateContent(prompt);
+            const response = await result.response;
+            
+            return {
+                success: true,
+                response: response.text()
+            };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+    
+    async backupServer(serverId, options) {
+        try {
+            const serverDetails = this.getServerDetails(serverId);
+            if (!serverDetails) {
+                return { success: false, error: 'Server not found' };
+            }
+            
+            const backup = {
+                id: Date.now().toString(),
+                serverId: serverId,
+                serverName: serverDetails.name,
+                createdAt: new Date().toISOString(),
+                data: {}
+            };
+            
+            if (options.channels) backup.data.channels = serverDetails.channels;
+            if (options.roles) backup.data.roles = serverDetails.roles;
+            if (options.emojis) backup.data.emojis = serverDetails.emojis;
+            if (options.settings) backup.data.settings = { /* server settings */ };
+            
+            // Save backup to file
+            const backupPath = path.join(require('electron').app.getPath('userData'), 'backups');
+            await fs.promises.mkdir(backupPath, { recursive: true });
+            await fs.promises.writeFile(
+                path.join(backupPath, `${backup.id}.json`),
+                JSON.stringify(backup, null, 2)
+            );
+            
+            return { success: true, backup };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+    
+    async cloneServer(serverId, newName) {
+        try {
+            // This would create a new server based on the template
+            // Note: This requires the bot to have server creation permissions
+            return { success: false, error: 'Server cloning requires additional permissions' };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+    
+    setAFK(settings) {
+        this.afkSettings = {
+            ...settings,
+            startTime: settings.enabled ? Date.now() : null
+        };
+        return { success: true };
+    }
+    
+    loadSavedCommands() {
+        try {
+            const commandsPath = path.join(require('electron').app.getPath('userData'), 'commands.json');
+            if (fs.existsSync(commandsPath)) {
+                return JSON.parse(fs.readFileSync(commandsPath, 'utf8'));
+            }
+        } catch (error) {
+            console.error('Error loading saved commands:', error);
+        }
+        return [];
+    }
+    
+    saveSavedCommands() {
+        try {
+            const commandsPath = path.join(require('electron').app.getPath('userData'), 'commands.json');
+            fs.writeFileSync(commandsPath, JSON.stringify(this.savedCommands, null, 2));
+        } catch (error) {
+            console.error('Error saving commands:', error);
+        }
+    }
+    
+    initializeGeminiAI(apiKey) {
+        try {
+            this.geminiAI = new GoogleGenerativeAI(apiKey);
+            return { success: true };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+
+    getStats() {
+        const uptime = Date.now() - this.stats.startTime;
+        
+        return {
+            ...this.stats,
+            uptime: {
+                total: uptime,
+                days: Math.floor(uptime / (1000 * 60 * 60 * 24)),
+                hours: Math.floor((uptime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+                minutes: Math.floor((uptime % (1000 * 60 * 60)) / (1000 * 60)),
+                seconds: Math.floor((uptime % (1000 * 60)) / 1000)
+            },
+            isReady: this.isReady,
+            guilds: Array.from(this.guildCache.values()),
+            friends: Array.from(this.userCache.values())
+        };
+    }
+
+    async updateSetting(setting, value) {
+        if (!this.client || !this.isReady) {
+            return { success: false, error: 'Client not ready' };
+        }
+
+        try {
+            switch (setting) {
+                case 'status':
+                    await this.client.user.setStatus(value);
+                    break;
+                case 'customStatus':
+                    await this.client.user.setActivity(value, { type: 'CUSTOM' });
+                    break;
+                case 'afk':
+                    await this.client.user.setAFK(value);
+                    break;
+                case 'customStatus':
+                    if (value) {
+                        await this.client.user.setActivity(value, { type: 'CUSTOM' });
+                    } else {
+                        await this.client.user.setActivity(null);
+                    }
+                    break;
+                case 'autoGiveaway':
+                    // Store setting for giveaway auto-join
+                    this.settings = this.settings || {};
+                    this.settings.autoGiveaway = value;
+                    break;
+                case 'statusAnimation':
+                    this.settings = this.settings || {};
+                    this.settings.statusAnimation = value;
+                    break;
+                default:
+                    return { success: false, error: 'Unknown setting' };
+            }
+            
+            return { success: true };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+
+    sendNotification(notification) {
+        // Send notification to all renderer processes
+        const { BrowserWindow } = require('electron');
+        const windows = BrowserWindow.getAllWindows();
+        
+        windows.forEach(window => {
+            window.webContents.send('discord-notification', notification);
+        });
+    }
+
+    incrementCommandUsage() {
+        this.stats.commandsUsed++;
     }
 }
 
-@media (max-width: 768px) {
-    .main-content {
-        padding: 16px;
-    }
-    
-    .content-header {
-        flex-direction: column;
-        gap: 16px;
-        align-items: stretch;
-    }
-    
-    .header-actions {
-        justify-content: center;
-    }
-    
-    .servers-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .command-builder {
-        grid-template-columns: 1fr;
-    }
-    
-    .target-selector {
-        grid-template-columns: 1fr;
-    }
-}
-
-@import url('modals.css');
+module.exports = DiscordClient;
