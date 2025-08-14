@@ -1,4 +1,5 @@
 const { ipcRenderer } = require('electron');
+const Modal = require('./modal-manager');
 
 class LoginManager {
     constructor() {

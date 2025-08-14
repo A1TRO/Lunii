@@ -502,3 +502,6 @@ class ModalSystem {
         return icons[type] || icons.info;
     }
 }
+
+// Export the class
+module.exports = ModalSystem;
