@@ -1,719 +1,1225 @@
-const { Client } = require('discord.js-selfbot-v13');
-const { ipcMain } = require('electron');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
-const fs = require('fs');
-const path = require('path');
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
 
-class DiscordClient {
-    constructor() {
-        this.client = null;
-        this.isReady = false;
-        this.userCache = new Map();
-        this.guildCache = new Map();
-        this.stats = {
-            commandsUsed: 0,
-            messagesReceived: 0,
-            startTime: Date.now()
-        };
-        this.geminiAI = null;
-        this.giveawayBots = new Set([
-            '294882584201003009', // GiveawayBot
-            '396464677032427530', // Carl-bot
-            '235148962103951360', // Dyno
-            '159985870458322944', // Mee6
-            '270904126974590976', // Tatsumaki
-            '155149108183695360', // Dank Memer
-            '432610292342587392', // GiveawayBot (alternative)
-            '716390085896962058', // Giveaway Boat
-        ]);
-        this.afkSettings = {
-            enabled: false,
-            message: "I'm currently AFK. I'll get back to you soon!",
-            startTime: null
-        };
-        this.savedCommands = this.loadSavedCommands();
-        
-        this.setupIPC();
-    }
+body {
+    font-family: 'Inter', sans-serif;
+    background: linear-gradient(135deg, #0B1426 0%, #1a2332 50%, #2a3441 100%);
+    color: #ffffff;
+    height: 100vh;
+    overflow: hidden;
+    -webkit-app-region: no-drag;
+}
 
-    setupIPC() {
-        // Handle login requests
-        ipcMain.handle('discord-login', async (event, token) => {
-            try {
-                return await this.login(token);
-            } catch (error) {
-                console.error('Discord login error:', error);
-                return { success: false, error: error.message };
-            }
-        });
+/* Title Bar */
+.title-bar {
+    height: 32px;
+    background: rgba(11, 20, 38, 0.8);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 16px;
+    -webkit-app-region: drag;
+    z-index: 1000;
+    position: relative;
+}
 
-        // Handle logout requests
-        ipcMain.handle('discord-logout', async () => {
-            try {
-                await this.logout();
-                return { success: true };
-            } catch (error) {
-                return { success: false, error: error.message };
-            }
-        });
+.title-bar-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
 
-        // Handle user data requests
-        ipcMain.handle('discord-get-user-data', () => {
-            return this.getUserData();
-        });
+.app-logo img {
+    width: 16px;
+    height: 16px;
+}
 
-        // Handle stats requests
-        ipcMain.handle('discord-get-stats', () => {
-            return this.getStats();
-        });
+.app-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #ffffff;
+    opacity: 0.9;
+}
 
-        // Handle setting updates
-        ipcMain.handle('discord-update-setting', async (event, setting, value) => {
-            return await this.updateSetting(setting, value);
-        });
-        
-        // Handle friends requests
-        ipcMain.handle('discord-get-friends', () => {
-            return this.getFriends();
-        });
-        
-        // Handle servers requests
-        ipcMain.handle('discord-get-servers', () => {
-            return this.getServers();
-        });
-        
-        // Handle server details
-        ipcMain.handle('discord-get-server-details', (event, serverId) => {
-            return this.getServerDetails(serverId);
-        });
-        
-        // Handle messaging
-        ipcMain.handle('discord-send-message', async (event, data) => {
-            return await this.sendMessage(data);
-        });
-        
-        // Handle command operations
-        ipcMain.handle('discord-save-command', (event, command) => {
-            return this.saveCommand(command);
-        });
-        
-        ipcMain.handle('discord-get-saved-commands', () => {
-            return this.getSavedCommands();
-        });
-        
-        ipcMain.handle('discord-execute-command', async (event, command) => {
-            return await this.executeCommand(command);
-        });
-        
-        // Handle AI assistance
-        ipcMain.handle('discord-ai-assist', async (event, prompt) => {
-            return await this.getAIAssistance(prompt);
-        });
-        
-        // Handle server backup/clone
-        ipcMain.handle('discord-backup-server', async (event, serverId, options) => {
-            return await this.backupServer(serverId, options);
-        });
-        
-        ipcMain.handle('discord-clone-server', async (event, serverId, newName) => {
-            return await this.cloneServer(serverId, newName);
-        });
-        
-        // Handle AFK settings
-        ipcMain.handle('discord-set-afk', (event, settings) => {
-            return this.setAFK(settings);
-        });
-    }
+.title-bar-controls {
+    display: flex;
+    gap: 8px;
+    -webkit-app-region: no-drag;
+}
 
-    async login(token) {
-        if (this.client) {
-            await this.logout();
-        }
+.control-btn {
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
 
-        this.client = new Client({
-            checkUpdate: false,
-            syncStatus: false,
-            autoRedeemNitro: false
-        });
+.control-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
 
-        return new Promise((resolve) => {
-            const timeout = setTimeout(() => {
-                resolve({ success: false, error: 'Login timeout' });
-            }, 30000);
+.control-btn.close:hover {
+    background: #ef4444;
+}
 
-            this.client.once('ready', async () => {
-                clearTimeout(timeout);
-                this.isReady = true;
-                this.stats.startTime = Date.now();
-                
-                // Cache user data
-                await this.cacheUserData();
-                
-                // Setup event listeners
-                this.setupEventListeners();
-                
-                resolve({ 
-                    success: true, 
-                    user: this.getUserData() 
-                });
-            });
+/* Dashboard Container */
+.dashboard-container {
+    height: calc(100vh - 32px);
+    display: flex;
+    background: transparent;
+}
 
-            this.client.on('error', (error) => {
-                clearTimeout(timeout);
-                console.error('Discord client error:', error);
-                resolve({ success: false, error: error.message });
-            });
+/* Sidebar */
+.sidebar {
+    width: 80px;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(20px);
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 0;
+    z-index: 100;
+}
 
-            // Attempt login
-            this.client.login(token).catch((error) => {
-                clearTimeout(timeout);
-                console.error('Login failed:', error);
-                resolve({ success: false, error: 'Invalid token or login failed' });
-            });
-        });
-    }
+.nav-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    align-items: center;
+}
 
-    async logout() {
-        if (this.client) {
-            this.isReady = false;
-            await this.client.destroy();
-            this.client = null;
-            this.userCache.clear();
-            this.guildCache.clear();
-        }
-    }
+.nav-item {
+    width: 48px;
+    height: 48px;
+    border: none;
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.6);
+    border-radius: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    position: relative;
+}
 
-    async cacheUserData() {
-        if (!this.client || !this.isReady) return;
+.nav-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.8);
+    transform: translateY(-2px);
+}
 
-        try {
-            // Cache guilds
-            this.client.guilds.cache.forEach(guild => {
-                this.guildCache.set(guild.id, {
-                    id: guild.id,
-                    name: guild.name,
-                    icon: guild.iconURL(),
-                    memberCount: guild.memberCount,
-                    owner: guild.ownerId === this.client.user.id
-                });
-            });
+.nav-item.active {
+    background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+    color: #ffffff;
+    box-shadow: 0 8px 25px rgba(79, 70, 229, 0.3);
+}
 
-            // Cache friends
-            if (this.client.relationships) {
-                this.client.relationships.cache.forEach(relationship => {
-                    if (relationship.type === 1) { // Friends
-                        this.userCache.set(relationship.user.id, {
-                            id: relationship.user.id,
-                            username: relationship.user.username,
-                            discriminator: relationship.user.discriminator,
-                            avatar: relationship.user.displayAvatarURL(),
-                            status: relationship.user.presence?.status || 'offline'
-                        });
-                    }
-                });
-            }
-        } catch (error) {
-            console.error('Error caching user data:', error);
-        }
-    }
+.nav-item.active::before {
+    content: '';
+    position: absolute;
+    left: -20px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 24px;
+    background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+    border-radius: 0 2px 2px 0;
+}
 
-    setupEventListeners() {
-        if (!this.client) return;
+/* Main Content */
+.main-content {
+    flex: 1;
+    padding: 24px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
 
-        // Message events
-        this.client.on('messageCreate', (message) => {
-            this.stats.messagesReceived++;
-            
-            // Check for mentions
-            if (message.mentions.has(this.client.user)) {
-                this.sendNotification({
-                    type: 'mention',
-                    title: 'You got pinged!',
-                    content: message.content,
-                    author: message.author.username,
-                    channel: message.channel.name || 'DM',
-                    guild: message.guild?.name || 'Direct Message',
-                    timestamp: Date.now()
-                });
-            }
-            
-            // Check for giveaway keywords
-            const giveawayKeywords = ['🎉', 'giveaway', 'react', 'win', 'prize', 'enter', 'participate'];
-            const hasGiveawayKeyword = giveawayKeywords.some(keyword => 
-                message.content.toLowerCase().includes(keyword.toLowerCase())
-            );
-            
-            // Enhanced giveaway detection
-            if (hasGiveawayKeyword && message.guild && this.isVerifiedGiveawayBot(message.author)) {
-                this.sendNotification({
-                    type: 'success',
-                    title: 'Giveaway Detected',
-                    content: `Verified giveaway found in ${message.guild.name}`,
-                    author: message.author.username,
-                    channel: message.channel.name,
-                    guild: message.guild.name,
-                    timestamp: Date.now()
-                });
-                
-                // Auto-join if enabled
-                if (this.settings?.autoGiveaway) {
-                    this.autoJoinGiveaway(message);
-                }
-            }
-            
-            // AFK auto-reply
-            if (this.afkSettings.enabled && message.mentions.has(this.client.user)) {
-                this.handleAFKReply(message);
-            }
-        });
+.main-content::-webkit-scrollbar {
+    width: 6px;
+}
 
-        // Presence updates
-        this.client.on('presenceUpdate', (oldPresence, newPresence) => {
-            if (this.userCache.has(newPresence.userId)) {
-                const cached = this.userCache.get(newPresence.userId);
-                cached.status = newPresence.status;
-                this.userCache.set(newPresence.userId, cached);
-            }
-        });
+.main-content::-webkit-scrollbar-track {
+    background: transparent;
+}
 
-        // Guild events
-        this.client.on('guildCreate', (guild) => {
-            this.guildCache.set(guild.id, {
-                id: guild.id,
-                name: guild.name,
-                icon: guild.iconURL(),
-                memberCount: guild.memberCount,
-                owner: guild.ownerId === this.client.user.id
-            });
-            
-            this.sendNotification({
-                type: 'success',
-                title: 'Joined new server',
-                content: `You joined ${guild.name}`,
-                timestamp: Date.now()
-            });
-        });
+.main-content::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+}
 
-        this.client.on('guildDelete', (guild) => {
-            this.guildCache.delete(guild.id);
-            
-            this.sendNotification({
-                type: 'warning',
-                title: 'Left server',
-                content: `You left ${guild.name}`,
-                timestamp: Date.now()
-            });
-        });
-        
-        // Relationship events
-        this.client.on('relationshipAdd', (relationship) => {
-            if (relationship.type === 1) { // Friend
-                this.userCache.set(relationship.user.id, {
-                    id: relationship.user.id,
-                    username: relationship.user.username,
-                    discriminator: relationship.user.discriminator,
-                    avatar: relationship.user.displayAvatarURL(),
-                    status: relationship.user.presence?.status || 'offline'
-                });
-                
-                this.sendNotification({
-                    type: 'success',
-                    title: 'New Friend',
-                    content: `${relationship.user.username} is now your friend`,
-                    timestamp: Date.now()
-                });
-            }
-        });
-        
-        this.client.on('relationshipRemove', (relationship) => {
-            if (relationship.type === 1) { // Friend
-                this.userCache.delete(relationship.user.id);
-                
-                this.sendNotification({
-                    type: 'error',
-                    title: 'Friend Removed',
-                    content: `${relationship.user.username} is no longer your friend`,
-                    timestamp: Date.now()
-                });
-            }
-        });
+/* Page Content */
+.page-content {
+    display: none;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.page-content.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Content Header */
+.content-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 32px;
+}
+
+.greeting h1 {
+    font-size: 28px;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.greeting span {
+    background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.header-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.switch-account-btn {
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: 'Inter', sans-serif;
+}
+
+.switch-account-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+}
+
+/* Dashboard Grid */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr 400px;
+    gap: 24px;
+    height: calc(100vh - 200px);
+}
+
+/* Panel Styles */
+.panel {
+    background: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 24px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.panel::-webkit-scrollbar {
+    width: 4px;
+}
+
+.panel::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.panel::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+}
+
+/* Profile Panel */
+.profile-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.profile-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.avatar-container {
+    position: relative;
+}
+
+.avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
+    border: 3px solid rgba(79, 70, 229, 0.3);
+}
+
+.status-indicator {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 3px solid rgba(15, 23, 42, 0.8);
+}
+
+.status-indicator.online { background: #22c55e; }
+.status-indicator.idle { background: #f59e0b; }
+.status-indicator.dnd { background: #ef4444; }
+.status-indicator.offline { background: #6b7280; }
+
+.profile-info h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 4px;
+}
+
+.profile-info p {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.profile-badges {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.badge {
+    padding: 4px 8px;
+    background: rgba(79, 70, 229, 0.2);
+    border: 1px solid rgba(79, 70, 229, 0.3);
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    color: #a5b4fc;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Profile Stats */
+.profile-stats {
+    display: flex;
+    justify-content: center;
+}
+
+.stat-group {
+    display: flex;
+    gap: 32px;
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.stat-circle {
+    position: relative;
+    width: 80px;
+    height: 80px;
+}
+
+.stat-progress {
+    transform: rotate(-90deg);
+}
+
+.stat-bg {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.1);
+    stroke-width: 4;
+}
+
+.stat-fill {
+    fill: none;
+    stroke-width: 4;
+    stroke-linecap: round;
+    stroke-dasharray: 226;
+    stroke-dashoffset: 226;
+    transition: stroke-dashoffset 1s ease;
+}
+
+.servers-fill {
+    stroke: url(#serversGradient);
+}
+
+.friends-fill {
+    stroke: url(#friendsGradient);
+}
+
+.stat-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+}
+
+.stat-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: #ffffff;
+    line-height: 1;
+}
+
+.stat-max {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.stat-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.7);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Profile Details */
+.profile-details {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.detail-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+}
+
+.detail-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.detail-label svg {
+    width: 14px;
+    height: 14px;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.detail-value {
+    font-size: 14px;
+    font-weight: 500;
+    color: #ffffff;
+}
+
+.status-active {
+    color: #22c55e;
+}
+
+.uptime-display {
+    display: flex;
+    gap: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+}
+
+/* Profile Toggles */
+.profile-toggles {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.toggle-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.toggle-item span {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.toggle-switch {
+    position: relative;
+    width: 44px;
+    height: 24px;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-switch label {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+.toggle-switch label:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background: #ffffff;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+}
+
+.toggle-switch input:checked + label {
+    background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+}
+
+.toggle-switch input:checked + label:before {
+    transform: translateX(20px);
+}
+
+/* Custom Status Section */
+.custom-status-section {
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.custom-status-section h4 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 16px;
+}
+
+.status-input-group {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.status-input-group input {
+    flex: 1;
+    height: 36px;
+    background: rgba(15, 23, 42, 0.6);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 0 12px;
+    font-size: 14px;
+    color: #ffffff;
+    transition: all 0.3s ease;
+    font-family: 'Inter', sans-serif;
+}
+
+.status-input-group input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.status-input-group input:focus {
+    outline: none;
+    border-color: rgba(79, 70, 229, 0.5);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+.status-input-group select {
+    height: 36px;
+    background: rgba(15, 23, 42, 0.6);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 0 12px;
+    font-size: 14px;
+    color: #ffffff;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+}
+
+.status-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.status-btn {
+    flex: 1;
+    height: 32px;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: 'Inter', sans-serif;
+}
+
+.status-btn:not(.secondary) {
+    background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+    color: #ffffff;
+}
+
+.status-btn:not(.secondary):hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+}
+
+.status-btn.secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.status-btn.secondary:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+}
+
+/* Notification Panel */
+.notification-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.panel-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.panel-title svg {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.notification-count {
+    background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 10px;
+    min-width: 18px;
+    text-align: center;
+}
+
+.panel-action {
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.6);
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.panel-action:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+}
+
+.notifications-list {
+    flex: 1;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.notifications-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.notifications-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.notifications-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+}
+
+.notification-item {
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    margin-bottom: 12px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.notification-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.notification-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+}
+
+.notification-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.notification-time {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.notification-content {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.8);
+    line-height: 1.4;
+    margin-bottom: 8px;
+}
+
+.notification-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.notification-type {
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.notification-type.mention {
+    background: rgba(239, 68, 68, 0.2);
+    color: #fca5a5;
+}
+
+.notification-type.success {
+    background: rgba(34, 197, 94, 0.2);
+    color: #86efac;
+}
+
+.notification-type.warning {
+    background: rgba(245, 158, 11, 0.2);
+    color: #fbbf24;
+}
+
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.empty-state p {
+    font-size: 16px;
+    font-weight: 500;
+    margin-bottom: 8px;
+}
+
+.empty-state span {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+/* Action Buttons */
+.action-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.action-btn.primary {
+    background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+    color: #ffffff;
+}
+
+.action-btn.primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+}
+
+.action-btn.secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.action-btn.secondary:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+}
+
+/* Friends List */
+.friends-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+}
+
+.friend-item {
+    padding: 16px;
+    background: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: all 0.3s ease;
+}
+
+.friend-item:hover {
+    background: rgba(15, 23, 42, 0.6);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+}
+
+.friend-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    position: relative;
+}
+
+.friend-info {
+    flex: 1;
+}
+
+.friend-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 2px;
+}
+
+.friend-status {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+/* Servers Grid */
+.servers-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+}
+
+.server-item {
+    padding: 20px;
+    background: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.server-item:hover {
+    background: rgba(15, 23, 42, 0.6);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+}
+
+.server-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.server-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: rgba(79, 70, 229, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 700;
+    color: #4F46E5;
+}
+
+.server-info h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 4px;
+}
+
+.server-info p {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.server-stats {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* Form Elements */
+.input-group {
+    margin-bottom: 20px;
+}
+
+.input-group label {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    color: #ffffff;
+    margin-bottom: 8px;
+}
+
+.input-group input,
+.input-group select,
+.input-group textarea {
+    width: 100%;
+    background: rgba(15, 23, 42, 0.6);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 14px;
+    color: #ffffff;
+    transition: all 0.3s ease;
+    font-family: 'Inter', sans-serif;
+}
+
+.input-group input {
+    height: 44px;
+}
+
+.input-group textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+.input-group input::placeholder,
+.input-group textarea::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.input-group input:focus,
+.input-group select:focus,
+.input-group textarea:focus {
+    outline: none;
+    border-color: rgba(79, 70, 229, 0.5);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+/* Checkbox */
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 12px;
+}
+
+.checkbox-label input[type="checkbox"] {
+    display: none;
+}
+
+.checkmark {
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 4px;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.checkbox-label input[type="checkbox"]:checked + .checkmark {
+    background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+    border-color: #4F46E5;
+}
+
+.checkbox-label input[type="checkbox"]:checked + .checkmark::after {
+    content: '';
+    position: absolute;
+    left: 5px;
+    top: 2px;
+    width: 4px;
+    height: 8px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+/* Tab System */
+.tab-btn {
+    padding: 8px 16px;
+    border: none;
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.7);
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: 'Inter', sans-serif;
+}
+
+.tab-btn.active {
+    background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+    color: #ffffff;
+}
+
+.tab-btn:not(.active):hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: rgba(255, 255, 255, 0.9);
+}
+
+/* Context Menu */
+.context-menu {
+    position: fixed;
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 8px 0;
+    min-width: 180px;
+    z-index: 10000;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.context-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.8);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.context-menu-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+}
+
+.context-menu-separator {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.1);
+    margin: 4px 0;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
     }
     
-    isVerifiedGiveawayBot(author) {
-        return this.giveawayBots.has(author.id) || author.bot;
-    }
-    
-    async autoJoinGiveaway(message) {
-        try {
-            // Look for reaction emojis in the message
-            const reactionEmojis = ['🎉', '🎊', '🎁', '✨'];
-            
-            for (const emoji of reactionEmojis) {
-                if (message.content.includes(emoji)) {
-                    await message.react(emoji);
-                    this.incrementCommandUsage();
-                    break;
-                }
-            }
-        } catch (error) {
-            console.error('Error auto-joining giveaway:', error);
-        }
-    }
-    
-    async handleAFKReply(message) {
-        try {
-            const afkDuration = Date.now() - this.afkSettings.startTime;
-            const hours = Math.floor(afkDuration / (1000 * 60 * 60));
-            const minutes = Math.floor((afkDuration % (1000 * 60 * 60)) / (1000 * 60));
-            
-            let replyMessage = this.afkSettings.message;
-            if (hours > 0) {
-                replyMessage += ` (AFK for ${hours}h ${minutes}m)`;
-            } else if (minutes > 0) {
-                replyMessage += ` (AFK for ${minutes}m)`;
-            }
-            
-            await message.reply(replyMessage);
-        } catch (error) {
-            console.error('Error sending AFK reply:', error);
-        }
-    }
-
-    getUserData() {
-        if (!this.client || !this.isReady || !this.client.user) {
-            return null;
-        }
-
-        const user = this.client.user;
-        const nitroType = user.premiumType;
-        
-        return {
-            id: user.id,
-            username: user.username,
-            discriminator: user.discriminator,
-            handle: user.tag,
-            avatar: user.displayAvatarURL({ size: 128 }),
-            nitro: nitroType > 0,
-            nitroType: nitroType,
-            verified: user.verified,
-            mfaEnabled: user.mfaEnabled,
-            createdAt: user.createdAt,
-            badges: this.getUserBadges(user),
-            servers: this.guildCache.size,
-            friends: this.userCache.size,
-            status: user.presence?.status || 'online',
-            customStatus: user.presence?.activities?.find(a => a.type === 'CUSTOM')?.state || null
-        };
-    }
-    
-    getUserBadges(user) {
-        const badges = [];
-        
-        if (user.premiumType > 0) badges.push('NITRO');
-        if (user.flags) {
-            if (user.flags.has('EARLY_SUPPORTER')) badges.push('EARLY_SUPPORTER');
-            if (user.flags.has('HYPESQUAD_EVENTS')) badges.push('HYPESQUAD_EVENTS');
-            if (user.flags.has('HOUSE_BRAVERY')) badges.push('HOUSE_BRAVERY');
-            if (user.flags.has('HOUSE_BRILLIANCE')) badges.push('HOUSE_BRILLIANCE');
-            if (user.flags.has('HOUSE_BALANCE')) badges.push('HOUSE_BALANCE');
-            //if (user.flags.has('VERIFIED_DEVELOPER')) badges.push('VERIFIED_DEVELOPER');
-        }
-        
-        return badges;
-    }
-    
-    getFriends() {
-        return Array.from(this.userCache.values());
-    }
-    
-    getServers() {
-        return Array.from(this.guildCache.values());
-    }
-    
-    getServerDetails(serverId) {
-        const guild = this.client.guilds.cache.get(serverId);
-        if (!guild) return null;
-        
-        return {
-            id: guild.id,
-            name: guild.name,
-            icon: guild.iconURL({ size: 128 }),
-            memberCount: guild.memberCount,
-            channels: guild.channels.cache.map(channel => ({
-                id: channel.id,
-                name: channel.name,
-                type: channel.type,
-                position: channel.position
-            })),
-            emojis: guild.emojis.cache.map(emoji => ({
-                id: emoji.id,
-                name: emoji.name,
-                url: emoji.url,
-                animated: emoji.animated
-            })),
-            stickers: guild.stickers.cache.map(sticker => ({
-                id: sticker.id,
-                name: sticker.name,
-                description: sticker.description,
-                url: sticker.url
-            })),
-            roles: guild.roles.cache.map(role => ({
-                id: role.id,
-                name: role.name,
-                color: role.hexColor,
-                position: role.position
-            }))
-        };
-    }
-    
-    async sendMessage(data) {
-        try {
-            const { type, target, content, options = {} } = data;
-            let channel;
-            
-            if (type === 'channel') {
-                channel = this.client.channels.cache.get(target);
-            } else if (type === 'dm') {
-                const user = this.client.users.cache.get(target);
-                if (user) {
-                    channel = await user.createDM();
-                }
-            }
-            
-            if (!channel) {
-                return { success: false, error: 'Channel or user not found' };
-            }
-            
-            const messageOptions = {
-                content: content,
-                tts: options.tts || false
-            };
-            
-            if (options.embed) {
-                messageOptions.embeds = [{
-                    description: content,
-                    color: 0x4F46E5
-                }];
-                messageOptions.content = '';
-            }
-            
-            const sentMessage = await channel.send(messageOptions);
-            this.incrementCommandUsage();
-            
-            return {
-                success: true,
-                messageId: sentMessage.id,
-                channelId: sentMessage.channel.id
-            };
-        } catch (error) {
-            return { success: false, error: error.message };
-        }
-    }
-    
-    saveCommand(command) {
-        try {
-            this.savedCommands.push({
-                ...command,
-                id: Date.now().toString(),
-                createdAt: new Date().toISOString()
-            });
-            
-            this.saveSavedCommands();
-            return { success: true };
-        } catch (error) {
-            return { success: false, error: error.message };
-        }
-    }
-    
-    getSavedCommands() {
-        return this.savedCommands;
-    }
-    
-    async executeCommand(command) {
-        try {
-            // This would execute the saved command
-            // Implementation depends on command type
-            this.incrementCommandUsage();
-            return { success: true };
-        } catch (error) {
-            return { success: false, error: error.message };
-        }
-    }
-    
-    async getAIAssistance(prompt) {
-        try {
-            if (!this.geminiAI) {
-                return { success: false, error: 'Gemini AI not configured' };
-            }
-            
-            const model = this.geminiAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-            const result = await model.generateContent(prompt);
-            const response = await result.response;
-            
-            return {
-                success: true,
-                response: response.text()
-            };
-        } catch (error) {
-            return { success: false, error: error.message };
-        }
-    }
-    
-    async backupServer(serverId, options) {
-        try {
-            const serverDetails = this.getServerDetails(serverId);
-            if (!serverDetails) {
-                return { success: false, error: 'Server not found' };
-            }
-            
-            const backup = {
-                id: Date.now().toString(),
-                serverId: serverId,
-                serverName: serverDetails.name,
-                createdAt: new Date().toISOString(),
-                data: {}
-            };
-            
-            if (options.channels) backup.data.channels = serverDetails.channels;
-            if (options.roles) backup.data.roles = serverDetails.roles;
-            if (options.emojis) backup.data.emojis = serverDetails.emojis;
-            if (options.settings) backup.data.settings = { /* server settings */ };
-            
-            // Save backup to file
-            const backupPath = path.join(require('electron').app.getPath('userData'), 'backups');
-            await fs.promises.mkdir(backupPath, { recursive: true });
-            await fs.promises.writeFile(
-                path.join(backupPath, `${backup.id}.json`),
-                JSON.stringify(backup, null, 2)
-            );
-            
-            return { success: true, backup };
-        } catch (error) {
-            return { success: false, error: error.message };
-        }
-    }
-    
-    async cloneServer(serverId, newName) {
-        try {
-            // This would create a new server based on the template
-            // Note: This requires the bot to have server creation permissions
-            return { success: false, error: 'Server cloning requires additional permissions' };
-        } catch (error) {
-            return { success: false, error: error.message };
-        }
-    }
-    
-    setAFK(settings) {
-        this.afkSettings = {
-            ...settings,
-            startTime: settings.enabled ? Date.now() : null
-        };
-        return { success: true };
-    }
-    
-    loadSavedCommands() {
-        try {
-            const commandsPath = path.join(require('electron').app.getPath('userData'), 'commands.json');
-            if (fs.existsSync(commandsPath)) {
-                return JSON.parse(fs.readFileSync(commandsPath, 'utf8'));
-            }
-        } catch (error) {
-            console.error('Error loading saved commands:', error);
-        }
-        return [];
-    }
-    
-    saveSavedCommands() {
-        try {
-            const commandsPath = path.join(require('electron').app.getPath('userData'), 'commands.json');
-            fs.writeFileSync(commandsPath, JSON.stringify(this.savedCommands, null, 2));
-        } catch (error) {
-            console.error('Error saving commands:', error);
-        }
-    }
-    
-    initializeGeminiAI(apiKey) {
-        try {
-            this.geminiAI = new GoogleGenerativeAI(apiKey);
-            return { success: true };
-        } catch (error) {
-            return { success: false, error: error.message };
-        }
-    }
-
-    getStats() {
-        const uptime = Date.now() - this.stats.startTime;
-        
-        return {
-            ...this.stats,
-            uptime: {
-                total: uptime,
-                days: Math.floor(uptime / (1000 * 60 * 60 * 24)),
-                hours: Math.floor((uptime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
-                minutes: Math.floor((uptime % (1000 * 60 * 60)) / (1000 * 60)),
-                seconds: Math.floor((uptime % (1000 * 60)) / 1000)
-            },
-            isReady: this.isReady,
-            guilds: Array.from(this.guildCache.values()),
-            friends: Array.from(this.userCache.values())
-        };
-    }
-
-    async updateSetting(setting, value) {
-        if (!this.client || !this.isReady) {
-            return { success: false, error: 'Client not ready' };
-        }
-
-        try {
-            switch (setting) {
-                case 'status':
-                    await this.client.user.setStatus(value);
-                    break;
-                case 'customStatus':
-                    await this.client.user.setActivity(value, { type: 'CUSTOM' });
-                    break;
-                case 'afk':
-                    await this.client.user.setAFK(value);
-                    break;
-                case 'customStatus':
-                    if (value) {
-                        await this.client.user.setActivity(value, { type: 'CUSTOM' });
-                    } else {
-                        await this.client.user.setActivity(null);
-                    }
-                    break;
-                case 'autoGiveaway':
-                    // Store setting for giveaway auto-join
-                    this.settings = this.settings || {};
-                    this.settings.autoGiveaway = value;
-                    break;
-                case 'statusAnimation':
-                    this.settings = this.settings || {};
-                    this.settings.statusAnimation = value;
-                    break;
-                default:
-                    return { success: false, error: 'Unknown setting' };
-            }
-            
-            return { success: true };
-        } catch (error) {
-            return { success: false, error: error.message };
-        }
-    }
-
-    sendNotification(notification) {
-        // Send notification to all renderer processes
-        const { BrowserWindow } = require('electron');
-        const windows = BrowserWindow.getAllWindows();
-        
-        windows.forEach(window => {
-            window.webContents.send('discord-notification', notification);
-        });
-    }
-
-    incrementCommandUsage() {
-        this.stats.commandsUsed++;
+    .notification-panel {
+        max-height: 400px;
     }
 }
 
-module.exports = DiscordClient;
+@media (max-width: 768px) {
+    .sidebar {
+        width: 60px;
+        padding: 16px 0;
+    }
+    
+    .nav-item {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .main-content {
+        padding: 16px;
+    }
+    
+    .content-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+    }
+    
+    .greeting h1 {
+        font-size: 24px;
+    }
+    
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .profile-header {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .stat-group {
+        gap: 20px;
+    }
+    
+    .friends-list,
+    .servers-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* SVG Gradients */
+svg defs {
+    position: absolute;
+    width: 0;
+    height: 0;
+}
+
+/* Add gradients for stat circles */
+.stat-progress defs linearGradient#serversGradient stop:first-child {
+    stop-color: #4F46E5;
+}
+
+.stat-progress defs linearGradient#serversGradient stop:last-child {
+    stop-color: #7C3AED;
+}
+
+.stat-progress defs linearGradient#friendsGradient stop:first-child {
+    stop-color: #22c55e;
+}
+
+.stat-progress defs linearGradient#friendsGradient stop:last-child {
+    stop-color: #16a34a;
+}
+
+/* Animation for loading states */
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.loading-shimmer {
+    position: relative;
+    overflow: hidden;
+}
+
+.loading-shimmer::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    animation: shimmer 2s infinite;
+}
+
+/* Utility Classes */
+.text-center { text-align: center; }
+.text-left { text-align: left; }
+.text-right { text-align: right; }
+
+.mb-0 { margin-bottom: 0; }
+.mb-1 { margin-bottom: 8px; }
+.mb-2 { margin-bottom: 16px; }
+.mb-3 { margin-bottom: 24px; }
+.mb-4 { margin-bottom: 32px; }
+
+.mt-0 { margin-top: 0; }
+.mt-1 { margin-top: 8px; }
+.mt-2 { margin-top: 16px; }
+.mt-3 { margin-top: 24px; }
+.mt-4 { margin-top: 32px; }
+
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-center { justify-content: center; }
+.justify-between { justify-content: space-between; }
+
+.w-full { width: 100%; }
+.h-full { height: 100%; }
+
+.opacity-50 { opacity: 0.5; }
+.opacity-75 { opacity: 0.75; }
+
+.cursor-pointer { cursor: pointer; }
+.cursor-not-allowed { cursor: not-allowed; }
+
+.select-none { user-select: none; }
+
+.overflow-hidden { overflow: hidden; }
+.overflow-auto { overflow: auto; }
+
+.relative { position: relative; }
+.absolute { position: absolute; }
+
+.z-10 { z-index: 10; }
+.z-20 { z-index: 20; }
+.z-50 { z-index: 50; }
