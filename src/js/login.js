@@ -1,4 +1,4 @@
-const Modal = require('./modal-manager');
+const Modal = require('./modal-manager.js');
 
 class LoginManager {
     constructor() {

@@ -168,6 +168,32 @@
         </div>
     </div>
 
+    <script>
+        const { ipcRenderer } = require('electron');
+        
+        // Expose electronAPI to window
+        window.electronAPI = {
+            // Send events
+            send: (channel, ...args) => {
+                ipcRenderer.send(channel, ...args);
+            },
+            
+            // Invoke methods
+            invoke: (channel, ...args) => {
+                return ipcRenderer.invoke(channel, ...args);
+            },
+            
+            // Event listeners
+            onUpdaterProgress: (callback) => {
+                ipcRenderer.on('updater-progress', callback);
+            },
+            
+            // Remove listeners
+            removeAllListeners: (channel) => {
+                ipcRenderer.removeAllListeners(channel);
+            }
+        };
+    </script>
     <script src="updater-renderer.js"></script>
 </body>
 </html>

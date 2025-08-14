@@ -18,10 +18,9 @@ class LuniiApp {
       minWidth: 1000,
       minHeight: 600,
       webPreferences: {
-        nodeIntegration: false,
-        contextIsolation: true,
-        enableRemoteModule: false,
-        preload: path.join(__dirname, 'preload.js')
+        nodeIntegration: true,
+        contextIsolation: false,
+        enableRemoteModule: false
       },
       frame: false,
       backgroundColor: '#0B1426',

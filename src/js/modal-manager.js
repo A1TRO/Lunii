@@ -1,4 +1,4 @@
-const ModalSystem = require('./modals');
+const ModalSystem = require('./modals.js');
 
 class ModalManager {
     constructor() {
