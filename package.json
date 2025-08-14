@@ -8,7 +8,12 @@
     "dev": "electron . --dev",
     "build": "electron-builder"
   },
-  "keywords": ["electron", "discord", "selfbot", "dashboard"],
+  "keywords": [
+    "electron",
+    "discord",
+    "selfbot",
+    "dashboard"
+  ],
   "author": "Lunii Team",
   "license": "MIT",
   "devDependencies": {
@@ -16,6 +21,7 @@
     "electron-builder": "^24.6.4"
   },
   "dependencies": {
+    "axios": "^1.11.0",
     "discord.js-selfbot-v13": "^2.15.1"
   },
   "build": {
