@@ -502,25 +502,3 @@ class ModalSystem {
         return icons[type] || icons.info;
     }
 }
-
-// Create global instance
-window.Modal = new ModalSystem();
-
-// Add shake animation to CSS if not present
-if (!document.querySelector('#shake-animation')) {
-    const style = document.createElement('style');
-    style.id = 'shake-animation';
-    style.textContent = `
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
-            20%, 40%, 60%, 80% { transform: translateX(2px); }
-        }
-    `;
-    document.head.appendChild(style);
-}
-
-// Export for use in other modules
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = ModalSystem;
-}
