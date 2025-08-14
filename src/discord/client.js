@@ -416,7 +416,7 @@ class DiscordClient {
             if (user.flags.has('HOUSE_BRAVERY')) badges.push('HOUSE_BRAVERY');
             if (user.flags.has('HOUSE_BRILLIANCE')) badges.push('HOUSE_BRILLIANCE');
             if (user.flags.has('HOUSE_BALANCE')) badges.push('HOUSE_BALANCE');
-            if (user.flags.has('VERIFIED_DEVELOPER')) badges.push('VERIFIED_DEVELOPER');
+            //if (user.flags.has('VERIFIED_DEVELOPER')) badges.push('VERIFIED_DEVELOPER');
         }
         
         return badges;
@@ -546,7 +546,7 @@ class DiscordClient {
                 return { success: false, error: 'Gemini AI not configured' };
             }
             
-            const model = this.geminiAI.getGenerativeModel({ model: 'gemini-pro' });
+            const model = this.geminiAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
             const result = await model.generateContent(prompt);
             const response = await result.response;
             
