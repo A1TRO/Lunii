@@ -1,1 +1,0 @@
-const ModalManager = require('./modal-manager.js')
