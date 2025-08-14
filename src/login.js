@@ -6,6 +6,7 @@ class LoginManager {
         this.loginBtn = document.getElementById('login-btn');
         this.errorMessage = document.getElementById('error-message');
         this.errorText = document.getElementById('error-text');
+        this.saveTokenCheckbox = document.getElementById('save-token-checkbox');
         
         this.init();
     }
@@ -74,6 +75,7 @@ class LoginManager {
 
     async handleLogin() {
         const token = this.tokenInput.value.trim();
+        const saveToken = this.saveTokenCheckbox.checked;
         
         if (!this.isValidTokenFormat(token)) {
             this.showError('Invalid token format');
@@ -85,7 +87,7 @@ class LoginManager {
         this.hideError();
 
         try {
-            const result = await window.electronAPI.login(token);
+            const result = await window.electronAPI.login(token, saveToken);
             
             if (result.success) {
                 // Login successful - main process will handle navigation
