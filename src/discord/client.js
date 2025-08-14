@@ -51,6 +51,16 @@ class DiscordClient {
         ipcMain.handle('discord-update-setting', async (event, setting, value) => {
             return await this.updateSetting(setting, value);
         });
+        
+        // Handle friends requests
+        ipcMain.handle('discord-get-friends', () => {
+            return this.getFriends();
+        });
+        
+        // Handle servers requests
+        ipcMain.handle('discord-get-servers', () => {
+            return this.getServers();
+        });
     }
 
     async login(token) {
@@ -215,11 +225,44 @@ class DiscordClient {
             this.guildCache.delete(guild.id);
             
             this.sendNotification({
-                type: 'info',
+                type: 'warning',
                 title: 'Left server',
                 content: `You left ${guild.name}`,
                 timestamp: Date.now()
             });
+        });
+        
+        // Relationship events
+        this.client.on('relationshipAdd', (relationship) => {
+            if (relationship.type === 1) { // Friend
+                this.userCache.set(relationship.user.id, {
+                    id: relationship.user.id,
+                    username: relationship.user.username,
+                    discriminator: relationship.user.discriminator,
+                    avatar: relationship.user.displayAvatarURL(),
+                    status: relationship.user.presence?.status || 'offline'
+                });
+                
+                this.sendNotification({
+                    type: 'success',
+                    title: 'New Friend',
+                    content: `${relationship.user.username} is now your friend`,
+                    timestamp: Date.now()
+                });
+            }
+        });
+        
+        this.client.on('relationshipRemove', (relationship) => {
+            if (relationship.type === 1) { // Friend
+                this.userCache.delete(relationship.user.id);
+                
+                this.sendNotification({
+                    type: 'error',
+                    title: 'Friend Removed',
+                    content: `${relationship.user.username} is no longer your friend`,
+                    timestamp: Date.now()
+                });
+            }
         });
     }
 
@@ -241,11 +284,37 @@ class DiscordClient {
             nitroType: nitroType,
             verified: user.verified,
             mfaEnabled: user.mfaEnabled,
+            createdAt: user.createdAt,
+            badges: this.getUserBadges(user),
             servers: this.guildCache.size,
             friends: this.userCache.size,
             status: user.presence?.status || 'online',
             customStatus: user.presence?.activities?.find(a => a.type === 'CUSTOM')?.state || null
         };
+    }
+    
+    getUserBadges(user) {
+        const badges = [];
+        
+        if (user.premiumType > 0) badges.push('NITRO');
+        if (user.flags) {
+            if (user.flags.has('EARLY_SUPPORTER')) badges.push('EARLY_SUPPORTER');
+            if (user.flags.has('HYPESQUAD_EVENTS')) badges.push('HYPESQUAD_EVENTS');
+            if (user.flags.has('HOUSE_BRAVERY')) badges.push('HOUSE_BRAVERY');
+            if (user.flags.has('HOUSE_BRILLIANCE')) badges.push('HOUSE_BRILLIANCE');
+            if (user.flags.has('HOUSE_BALANCE')) badges.push('HOUSE_BALANCE');
+            if (user.flags.has('VERIFIED_DEVELOPER')) badges.push('VERIFIED_DEVELOPER');
+        }
+        
+        return badges;
+    }
+    
+    getFriends() {
+        return Array.from(this.userCache.values());
+    }
+    
+    getServers() {
+        return Array.from(this.guildCache.values());
     }
 
     getStats() {
@@ -281,6 +350,22 @@ class DiscordClient {
                     break;
                 case 'afk':
                     await this.client.user.setAFK(value);
+                    break;
+                case 'customStatus':
+                    if (value) {
+                        await this.client.user.setActivity(value, { type: 'CUSTOM' });
+                    } else {
+                        await this.client.user.setActivity(null);
+                    }
+                    break;
+                case 'autoGiveaway':
+                    // Store setting for giveaway auto-join
+                    this.settings = this.settings || {};
+                    this.settings.autoGiveaway = value;
+                    break;
+                case 'statusAnimation':
+                    this.settings = this.settings || {};
+                    this.settings.statusAnimation = value;
                     break;
                 default:
                     return { success: false, error: 'Unknown setting' };

@@ -2,11 +2,24 @@ const ModalSystem = require('./modals.js');
 
 class ModalManager {
     constructor() {
-        this.modalSystem = new ModalSystem();
+        this.modalSystem = null;
         this.init();
     }
 
     init() {
+        // Wait for DOM to be ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                this.initializeSystem();
+            });
+        } else {
+            this.initializeSystem();
+        }
+    }
+    
+    initializeSystem() {
+        const ModalSystem = require('./modals.js');
+        this.modalSystem = new ModalSystem();
         this.addShakeAnimation();
     }
 
@@ -27,22 +40,27 @@ class ModalManager {
 
     // Proxy methods to the modal system
     alert(options) {
+        if (!this.modalSystem) return Promise.resolve(false);
         return this.modalSystem.alert(options);
     }
 
     confirm(options) {
+        if (!this.modalSystem) return Promise.resolve(false);
         return this.modalSystem.confirm(options);
     }
 
     prompt(options) {
+        if (!this.modalSystem) return Promise.resolve(null);
         return this.modalSystem.prompt(options);
     }
 
     loading(options) {
+        if (!this.modalSystem) return { close: () => {}, update: () => {} };
         return this.modalSystem.loading(options);
     }
 
     toast(options) {
+        if (!this.modalSystem) return { close: () => {} };
         return this.modalSystem.toast(options);
     }
 }

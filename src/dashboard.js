@@ -4,6 +4,7 @@ class DashboardManager {
     constructor() {
         this.currentUser = null;
         this.discordStats = null;
+        this.currentPage = 'home';
         this.uptime = {
             start: Date.now(),
             days: 0,
@@ -23,6 +24,8 @@ class DashboardManager {
         this.setupDiscordListeners();
         this.loadDiscordData();
         this.startDataRefresh();
+        this.setupCustomStatus();
+        this.setupTestModal();
     }
 
     setupWindowControls() {
@@ -50,7 +53,7 @@ class DashboardManager {
                 // Add active class to clicked item
                 item.classList.add('active');
                 
-                // Handle page switching (for future implementation)
+                // Handle page switching
                 const page = item.dataset.page;
                 this.switchPage(page);
             });
@@ -73,6 +76,12 @@ class DashboardManager {
 
         // Notification actions
         this.setupNotifications();
+        
+        // Custom status
+        this.setupCustomStatusActions();
+        
+        // Quick actions
+        this.setupQuickActions();
     }
 
     setupDiscordListeners() {
@@ -102,6 +111,17 @@ class DashboardManager {
         privateToggle.addEventListener('change', (e) => {
             this.updateDiscordSetting('privateMode', e.target.checked);
         });
+        
+        const giveawayToggle = document.getElementById('giveaway-toggle');
+        const statusAnimationToggle = document.getElementById('status-animation-toggle');
+        
+        giveawayToggle.addEventListener('change', (e) => {
+            this.updateDiscordSetting('autoGiveaway', e.target.checked);
+        });
+        
+        statusAnimationToggle.addEventListener('change', (e) => {
+            this.updateDiscordSetting('statusAnimation', e.target.checked);
+        });
     }
 
     setupNotifications() {
@@ -113,6 +133,49 @@ class DashboardManager {
                 this.dismissNotification(notificationItem);
             });
         });
+    }
+
+    setupCustomStatusActions() {
+        const setStatusBtn = document.getElementById('set-status-btn');
+        const clearStatusBtn = document.getElementById('clear-status-btn');
+        
+        setStatusBtn.addEventListener('click', () => {
+            this.setCustomStatus();
+        });
+        
+        clearStatusBtn.addEventListener('click', () => {
+            this.clearCustomStatus();
+        });
+    }
+    
+    setupQuickActions() {
+        const clearNotificationsBtn = document.getElementById('clear-notifications-btn');
+        
+        clearNotificationsBtn.addEventListener('click', () => {
+            this.clearAllNotifications();
+        });
+    }
+    
+    setupTestModal() {
+        const testModalBtn = document.getElementById('test-modal-btn');
+        
+        testModalBtn.addEventListener('click', () => {
+            this.showTestModal();
+        });
+    }
+    
+    setupCustomStatus() {
+        // Setup animated status rotation if enabled
+        this.statusRotationInterval = null;
+        this.statusMessages = [
+            "🎮 Gaming with Lunii",
+            "💻 Coding something cool",
+            "🎵 Vibing to music",
+            "☕ Powered by coffee",
+            "🌙 Night owl mode",
+            "⚡ High energy"
+        ];
+        this.currentStatusIndex = 0;
     }
 
     startDataRefresh() {
@@ -194,9 +257,41 @@ class DashboardManager {
         if (userData.nitro) {
             nitroStatus.textContent = 'Active';
             nitroStatus.className = 'detail-value status-active';
+            
+            // Show nitro badge
+            const nitroBadge = document.querySelector('.badge.nitro');
+            if (nitroBadge) nitroBadge.style.display = 'flex';
         } else {
             nitroStatus.textContent = 'Inactive';
             nitroStatus.className = 'detail-value status-inactive';
+        }
+        
+        // Update account creation date
+        if (userData.createdAt) {
+            const createdDate = new Date(userData.createdAt);
+            document.getElementById('account-created').textContent = 
+                createdDate.toLocaleDateString();
+        }
+        
+        // Update mutual servers count
+        document.getElementById('mutual-servers').textContent = userData.servers || 0;
+        
+        // Show additional badges based on user data
+        if (userData.badges) {
+            this.updateUserBadges(userData.badges);
+        }
+    }
+    
+    updateUserBadges(badges) {
+        const boostBadge = document.querySelector('.badge.boost');
+        const supporterBadge = document.querySelector('.badge.early-supporter');
+        
+        if (badges.includes('SERVER_BOOSTER')) {
+            boostBadge.style.display = 'flex';
+        }
+        
+        if (badges.includes('EARLY_SUPPORTER')) {
+            supporterBadge.style.display = 'flex';
         }
     }
 
@@ -232,9 +327,145 @@ class DashboardManager {
     }
 
     switchPage(page) {
-        console.log(`Switching to page: ${page}`);
-        // This would handle switching between different views
-        // For now, just log the page change
+        // Hide current page content
+        const currentPageContent = document.querySelector('.page-content:not([style*="display: none"])');
+        if (currentPageContent) {
+            currentPageContent.style.display = 'none';
+        }
+        
+        // Hide dashboard grid for non-home pages
+        const dashboardGrid = document.querySelector('.dashboard-grid');
+        
+        if (page === 'home') {
+            dashboardGrid.style.display = 'grid';
+        } else {
+            dashboardGrid.style.display = 'none';
+            
+            // Show the corresponding page
+            const pageContent = document.getElementById(`${page}-page`);
+            if (pageContent) {
+                pageContent.style.display = 'block';
+                this.loadPageData(page);
+            }
+        }
+        
+        this.currentPage = page;
+    }
+    
+    loadPageData(page) {
+        switch (page) {
+            case 'friends':
+                this.loadFriendsData();
+                break;
+            case 'servers':
+                this.loadServersData();
+                break;
+            case 'commands':
+                this.loadCommandHistory();
+                break;
+        }
+    }
+    
+    async loadFriendsData() {
+        try {
+            const friends = await window.electronAPI.invoke('discord-get-friends');
+            this.updateFriendsList(friends);
+        } catch (error) {
+            console.error('Error loading friends:', error);
+        }
+    }
+    
+    async loadServersData() {
+        try {
+            const servers = await window.electronAPI.invoke('discord-get-servers');
+            this.updateServersList(servers);
+        } catch (error) {
+            console.error('Error loading servers:', error);
+        }
+    }
+    
+    loadCommandHistory() {
+        // Load command history from local storage or API
+        const history = JSON.parse(localStorage.getItem('commandHistory') || '[]');
+        this.updateCommandHistory(history);
+    }
+    
+    updateFriendsList(friends) {
+        const friendsList = document.querySelector('.friends-list');
+        if (!friends || friends.length === 0) return;
+        
+        friendsList.innerHTML = '';
+        friends.forEach(friend => {
+            const friendElement = this.createFriendElement(friend);
+            friendsList.appendChild(friendElement);
+        });
+    }
+    
+    createFriendElement(friend) {
+        const div = document.createElement('div');
+        div.className = 'friend-item';
+        div.innerHTML = `
+            <div class="friend-avatar">
+                <img src="${friend.avatar || 'https://cdn.discordapp.com/embed/avatars/0.png'}" alt="${friend.username}">
+                <div class="status-dot ${friend.status || 'offline'}"></div>
+            </div>
+            <div class="friend-info">
+                <span class="friend-name">${friend.username}</span>
+                <span class="friend-status">${friend.status || 'Offline'}</span>
+            </div>
+        `;
+        return div;
+    }
+    
+    updateServersList(servers) {
+        const serversGrid = document.querySelector('.servers-grid');
+        if (!servers || servers.length === 0) return;
+        
+        serversGrid.innerHTML = '';
+        servers.forEach(server => {
+            const serverElement = this.createServerElement(server);
+            serversGrid.appendChild(serverElement);
+        });
+    }
+    
+    createServerElement(server) {
+        const div = document.createElement('div');
+        div.className = 'server-card';
+        div.innerHTML = `
+            <div class="server-icon">
+                <img src="${server.icon || 'https://cdn.discordapp.com/embed/avatars/0.png'}" alt="${server.name}">
+            </div>
+            <div class="server-info">
+                <h4>${server.name}</h4>
+                <p>${server.memberCount || 0} members</p>
+            </div>
+        `;
+        return div;
+    }
+    
+    updateCommandHistory(history) {
+        const commandHistory = document.querySelector('.command-history');
+        
+        if (history.length === 0) {
+            commandHistory.innerHTML = `
+                <div class="command-item">
+                    <span class="command-text">No commands executed yet</span>
+                    <span class="command-time">-</span>
+                </div>
+            `;
+            return;
+        }
+        
+        commandHistory.innerHTML = '';
+        history.forEach(cmd => {
+            const cmdElement = document.createElement('div');
+            cmdElement.className = 'command-item';
+            cmdElement.innerHTML = `
+                <span class="command-text">${cmd.command}</span>
+                <span class="command-time">${this.getTimeAgo(cmd.timestamp)}</span>
+            `;
+            commandHistory.appendChild(cmdElement);
+        });
     }
 
     showAccountSwitcher() {
@@ -281,6 +512,109 @@ class DashboardManager {
         });
     }
 
+    async setCustomStatus() {
+        const statusText = document.getElementById('custom-status-text').value;
+        const statusEmoji = document.getElementById('status-emoji').value;
+        
+        if (!statusText.trim()) {
+            Modal.toast({
+                title: 'Invalid Status',
+                message: 'Please enter a status message',
+                type: 'warning',
+                duration: 3000
+            });
+            return;
+        }
+        
+        const fullStatus = statusEmoji ? `${statusEmoji} ${statusText}` : statusText;
+        
+        try {
+            const result = await window.electronAPI.updateDiscordSetting('customStatus', fullStatus);
+            if (result.success) {
+                Modal.toast({
+                    title: 'Status Updated',
+                    message: 'Custom status has been set successfully',
+                    type: 'success',
+                    duration: 3000
+                });
+            }
+        } catch (error) {
+            Modal.toast({
+                title: 'Status Error',
+                message: 'Failed to update custom status',
+                type: 'error',
+                duration: 5000
+            });
+        }
+    }
+    
+    async clearCustomStatus() {
+        try {
+            const result = await window.electronAPI.updateDiscordSetting('customStatus', '');
+            if (result.success) {
+                document.getElementById('custom-status-text').value = '';
+                document.getElementById('status-emoji').value = '';
+                
+                Modal.toast({
+                    title: 'Status Cleared',
+                    message: 'Custom status has been cleared',
+                    type: 'success',
+                    duration: 3000
+                });
+            }
+        } catch (error) {
+            Modal.toast({
+                title: 'Clear Error',
+                message: 'Failed to clear custom status',
+                type: 'error',
+                duration: 5000
+            });
+        }
+    }
+    
+    clearAllNotifications() {
+        Modal.confirm({
+            title: 'Clear Notifications',
+            message: 'Are you sure you want to clear all notifications?',
+            type: 'question',
+            confirmText: 'Clear All',
+            cancelText: 'Cancel'
+        }).then(confirmed => {
+            if (confirmed) {
+                this.notifications = [];
+                this.updateNotificationsList();
+                this.updateNotificationCount();
+                
+                Modal.toast({
+                    title: 'Notifications Cleared',
+                    message: 'All notifications have been cleared',
+                    type: 'success',
+                    duration: 3000
+                });
+            }
+        });
+    }
+    
+    showTestModal() {
+        Modal.confirm({
+            title: 'Test Modal System',
+            message: 'This is a test of the modal system. Everything is working correctly!',
+            details: 'You can use modals for confirmations, alerts, prompts, and more. The system supports different types and styles.',
+            type: 'info',
+            confirmText: 'Show Toast',
+            cancelText: 'Close'
+        }).then(confirmed => {
+            if (confirmed) {
+                Modal.toast({
+                    title: 'Modal Test',
+                    message: 'Toast notification is working perfectly!',
+                    type: 'success',
+                    duration: 4000
+                });
+            }
+        });
+    }
+
     async updateDiscordSetting(setting, value) {
         console.log(`Setting ${setting} to ${value}`);
         
@@ -319,6 +653,8 @@ class DashboardManager {
             this.notifications = this.notifications.slice(0, 10);
         }
         
+        this.updateNotificationCount();
+        
         // Show toast for important notifications
         if (notification.type === 'mention') {
             Modal.toast({
@@ -330,6 +666,14 @@ class DashboardManager {
         }
         
         this.updateNotificationsList();
+    }
+
+    updateNotificationCount() {
+        const countElement = document.getElementById('notification-count');
+        if (countElement) {
+            countElement.textContent = this.notifications.length;
+            countElement.style.display = this.notifications.length > 0 ? 'inline' : 'none';
+        }
     }
 
     updateNotificationsList() {
@@ -434,6 +778,34 @@ class DashboardManager {
             }
         });
     }
+    
+    // Add method to handle guild/friend events
+    handleGuildLeave(guild) {
+        this.addNotification({
+            type: 'warning',
+            title: 'Left Server',
+            content: `You left ${guild.name}`,
+            timestamp: Date.now()
+        });
+    }
+    
+    handleFriendRemove(friend) {
+        this.addNotification({
+            type: 'error',
+            title: 'Friend Removed',
+            content: `${friend.username} is no longer your friend`,
+            timestamp: Date.now()
+        });
+    }
+    
+    handleFriendAdd(friend) {
+        this.addNotification({
+            type: 'success',
+            title: 'New Friend',
+            content: `${friend.username} is now your friend`,
+            timestamp: Date.now()
+        });
+    }
 }
 
 // Initialize dashboard when DOM is loaded
@@ -462,4 +834,8 @@ document.addEventListener('DOMContentLoaded', () => {
             this.style.transform = 'scale(1)';
         });
     });
+    
+    // Initialize notification count
+    const dashboard = new DashboardManager();
+    dashboard.updateNotificationCount();
 });

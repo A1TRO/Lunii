@@ -287,6 +287,16 @@ body {
     color: #ffffff;
 }
 
+.badge.boost {
+    background: linear-gradient(135deg, #f472b6 0%, #ec4899 100%);
+    color: #ffffff;
+}
+
+.badge.early-supporter {
+    background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+    color: #ffffff;
+}
+
 /* Stats */
 .profile-stats {
     margin: 16px 0;
@@ -395,6 +405,10 @@ body {
     color: rgba(255, 255, 255, 0.5);
 }
 
+.status-active {
+    color: #22c55e;
+}
+
 .uptime-item .uptime-display {
     font-family: 'JetBrains Mono', monospace;
     display: flex;
@@ -487,6 +501,74 @@ body {
     transform: translateX(20px);
 }
 
+/* Custom Status Section */
+.custom-status-section {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.custom-status-section h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 12px;
+}
+
+.status-input-group {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.status-input-group input {
+    flex: 1;
+    height: 36px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    padding: 0 12px;
+    color: #ffffff;
+    font-size: 13px;
+}
+
+.status-input-group select {
+    height: 36px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    padding: 0 12px;
+    color: #ffffff;
+    font-size: 13px;
+    min-width: 120px;
+}
+
+.status-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.status-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+    color: #ffffff;
+}
+
+.status-btn.secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.status-btn:hover {
+    transform: translateY(-1px);
+}
+
 /* Notification Panel */
 .notification-panel {
     display: flex;
@@ -507,6 +589,19 @@ body {
     font-size: 16px;
     font-weight: 600;
     color: #ffffff;
+    position: relative;
+}
+
+.notification-count {
+    background: #ef4444;
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 10px;
+    min-width: 18px;
+    text-align: center;
+    margin-left: 8px;
 }
 
 .panel-action {
@@ -618,6 +713,247 @@ body {
     color: rgba(255, 255, 255, 0.7);
 }
 
+/* Quick Actions */
+.quick-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.quick-action-btn {
+    flex: 1;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.quick-action-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+}
+
+/* Page Content */
+.page-content {
+    padding: 24px;
+}
+
+.page-content h2 {
+    font-size: 24px;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 24px;
+}
+
+/* Profile Settings */
+.profile-settings {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.setting-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.setting-group label {
+    font-size: 14px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.setting-group input,
+.setting-group textarea,
+.setting-group select {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    padding: 12px;
+    color: #ffffff;
+    font-size: 14px;
+}
+
+/* Friends List */
+.friends-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.friend-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: rgba(15, 23, 42, 0.4);
+    border-radius: 12px;
+}
+
+.friend-avatar {
+    position: relative;
+}
+
+.friend-avatar img {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+}
+
+.status-dot {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid rgba(15, 23, 42, 0.8);
+}
+
+.status-dot.online {
+    background: #22c55e;
+}
+
+.friend-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.friend-name {
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.friend-status {
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+/* Servers Grid */
+.servers-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+}
+
+.server-card {
+    background: rgba(15, 23, 42, 0.4);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.server-icon img {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+}
+
+.server-info h4 {
+    color: #ffffff;
+    margin-bottom: 4px;
+}
+
+.server-info p {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 12px;
+}
+
+/* Automation Settings */
+.automation-settings {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.feature-card {
+    background: rgba(15, 23, 42, 0.4);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.feature-card h4 {
+    color: #ffffff;
+    margin-bottom: 4px;
+}
+
+.feature-card p {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 14px;
+}
+
+/* Command History */
+.command-history {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.command-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: rgba(15, 23, 42, 0.4);
+    border-radius: 8px;
+}
+
+.command-text {
+    font-family: 'JetBrains Mono', monospace;
+    color: #ffffff;
+}
+
+.command-time {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 12px;
+}
+
+/* Settings Sections */
+.settings-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.settings-section {
+    background: rgba(15, 23, 42, 0.4);
+    border-radius: 12px;
+    padding: 20px;
+}
+
+.settings-section h4 {
+    color: #ffffff;
+    margin-bottom: 16px;
+}
+
+.setting-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.setting-item:last-child {
+    border-bottom: none;
+}
+
 /* Responsive Design */
 @media (max-width: 1200px) {
     .dashboard-grid {
@@ -644,5 +980,10 @@ body {
     .header-actions {
         justify-content: center;
     }
-@import url('modals.css');
+    
+    .servers-grid {
+        grid-template-columns: 1fr;
+    }
 }
+
+@import url('modals.css');

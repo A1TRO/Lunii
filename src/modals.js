@@ -5,15 +5,27 @@ class ModalSystem {
         this.toastQueue = [];
         this.maxToasts = 5;
         
-        this.init();
+        // Delay initialization to ensure DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => this.init());
+        } else {
+            this.init();
+        }
     }
 
     init() {
+        if (this.toastContainer) return; // Already initialized
         this.createToastContainer();
         this.setupKeyboardHandlers();
     }
 
     createToastContainer() {
+        // Remove existing container if it exists
+        const existing = document.querySelector('.toast-container');
+        if (existing) {
+            existing.remove();
+        }
+        
         this.toastContainer = document.createElement('div');
         this.toastContainer.className = 'toast-container';
         document.body.appendChild(this.toastContainer);
@@ -431,6 +443,10 @@ class ModalSystem {
 
     // Show Toast
     showToast(toast, duration) {
+        if (!this.toastContainer) {
+            this.createToastContainer();
+        }
+        
         // Remove oldest toast if at limit
         const existingToasts = this.toastContainer.children;
         if (existingToasts.length >= this.maxToasts) {
