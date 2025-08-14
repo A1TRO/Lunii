@@ -338,4 +338,5 @@ body {
     .login-header h1 {
         font-size: 24px;
     }
+@import url('modals.css');
 }

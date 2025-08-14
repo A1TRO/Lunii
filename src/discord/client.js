@@ -164,6 +164,24 @@ class DiscordClient {
                     timestamp: Date.now()
                 });
             }
+            
+            // Check for giveaway keywords
+            const giveawayKeywords = ['🎉', 'giveaway', 'react', 'win', 'prize'];
+            const hasGiveawayKeyword = giveawayKeywords.some(keyword => 
+                message.content.toLowerCase().includes(keyword.toLowerCase())
+            );
+            
+            if (hasGiveawayKeyword && message.guild) {
+                this.sendNotification({
+                    type: 'success',
+                    title: 'Giveaway Detected',
+                    content: `Potential giveaway found in ${message.guild.name}`,
+                    author: message.author.username,
+                    channel: message.channel.name,
+                    guild: message.guild.name,
+                    timestamp: Date.now()
+                });
+            }
         });
 
         // Presence updates

@@ -118,10 +118,10 @@ class LoginManager {
     }
 
     showTokenHelp() {
-        // Create a simple modal or alert with token instructions
-        const helpText = `To get your Discord token:
-
-1. Open Discord in your browser
+        Modal.alert({
+            title: 'How to Get Your Discord Token',
+            message: 'Follow these steps to obtain your Discord token:',
+            details: `1. Open Discord in your browser
 2. Press F12 to open Developer Tools
 3. Go to the Network tab
 4. Send a message in any channel
@@ -130,11 +130,10 @@ class LoginManager {
 7. Copy the value after "Authorization: "
 
 ⚠️ Warning: Never share your token with others!
-Your token gives full access to your Discord account.`;
-
-        // For now, just show an alert. In a full implementation,
-        // you'd want a proper modal
-        alert(helpText);
+Your token gives full access to your Discord account.`,
+            type: 'warning',
+            confirmText: 'Got it'
+        });
     }
 }
 

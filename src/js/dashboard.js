@@ -229,13 +229,47 @@ class DashboardManager {
     }
 
     showAccountSwitcher() {
-        // This would show a dropdown or modal with available accounts
-        console.log('Show account switcher');
+        Modal.confirm({
+            title: 'Switch Account',
+            message: 'Do you want to logout and switch to a different Discord account?',
+            details: 'You will need to enter a new token to login with a different account.',
+            type: 'question',
+            confirmText: 'Switch Account',
+            cancelText: 'Cancel'
+        }).then(confirmed => {
+            if (confirmed) {
+                this.addNewAccount();
+            }
+        });
     }
 
     addNewAccount() {
-        // This would trigger the login flow for a new account
-        ipcRenderer.send('logout');
+        Modal.confirm({
+            title: 'Add New Account',
+            message: 'This will logout your current account and return to the login screen.',
+            details: 'Make sure you have saved any important work before proceeding.',
+            type: 'warning',
+            confirmText: 'Continue',
+            cancelText: 'Cancel',
+            danger: false
+        }).then(confirmed => {
+            if (confirmed) {
+                const loading = Modal.loading({
+                    title: 'Logging out...',
+                    message: 'Disconnecting from Discord...'
+                });
+                
+                setTimeout(() => {
+                    loading.close();
+                    ipcRenderer.send('logout');
+                    Modal.toast({
+                        title: 'Logged out',
+                        message: 'Successfully disconnected from Discord',
+                        type: 'success'
+                    });
+                }, 1500);
+            }
+        });
     }
 
     async updateDiscordSetting(setting, value) {
@@ -243,11 +277,28 @@ class DashboardManager {
         
         try {
             const result = await ipcRenderer.invoke('discord-update-setting', setting, value);
-            if (!result.success) {
-                console.error('Failed to update setting:', result.error);
+            if (result.success) {
+                Modal.toast({
+                    title: 'Setting Updated',
+                    message: `${setting} has been updated successfully`,
+                    type: 'success',
+                    duration: 3000
+                });
+            } else {
+                Modal.toast({
+                    title: 'Update Failed',
+                    message: result.error || 'Failed to update setting',
+                    type: 'error',
+                    duration: 5000
+                });
             }
         } catch (error) {
-            console.error('Error updating Discord setting:', error);
+            Modal.toast({
+                title: 'Connection Error',
+                message: 'Failed to communicate with Discord',
+                type: 'error',
+                duration: 5000
+            });
         }
     }
 
@@ -257,6 +308,16 @@ class DashboardManager {
         // Keep only last 10 notifications
         if (this.notifications.length > 10) {
             this.notifications = this.notifications.slice(0, 10);
+        }
+        
+        // Show toast for important notifications
+        if (notification.type === 'mention') {
+            Modal.toast({
+                title: 'New Mention',
+                message: `${notification.author}: ${notification.content.substring(0, 50)}...`,
+                type: 'info',
+                duration: 8000
+            });
         }
         
         this.updateNotificationsList();
