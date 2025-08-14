@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lunii - Login</title>
+    <link rel="stylesheet" href="styles/login.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="title-bar">
+        <div class="title-bar-left">
+            <div class="app-logo">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M3 12L6 9L9 12L15 6L21 12" stroke="url(#gradient)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <defs>
+                        <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" style="stop-color:#4F46E5;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#7C3AED;stop-opacity:1" />
+                        </linearGradient>
+                    </defs>
+                </svg>
+            </div>
+            <span class="app-title">Lunii</span>
+        </div>
+        <div class="title-bar-controls">
+            <button class="control-btn" id="minimize-btn">−</button>
+            <button class="control-btn" id="maximize-btn">□</button>
+            <button class="control-btn close" id="close-btn">×</button>
+        </div>
+    </div>
+
+    <div class="login-container">
+        <div class="login-panel">
+            <div class="login-header">
+                <div class="logo-container">
+                    <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="8" y="12" width="32" height="24" rx="12" fill="url(#logoGradient)" opacity="0.2"/>
+                        <path d="M12 24L18 18L24 24L36 12L42 18" stroke="url(#logoGradient)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                        <defs>
+                            <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" style="stop-color:#4F46E5;stop-opacity:1" />
+                                <stop offset="50%" style="stop-color:#7C3AED;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#EC4899;stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                </div>
+                <h1>Welcome to Lunii</h1>
+                <p>Enter your Discord token to continue</p>
+            </div>
+
+            <div class="login-form">
+                <div class="input-group">
+                    <label for="token-input">Discord Token</label>
+                    <input type="password" id="token-input" placeholder="Enter your Discord token...">
+                    <div class="input-hint">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M8 14.5C11.5899 14.5 14.5 11.5899 14.5 8C14.5 4.41015 11.5899 1.5 8 1.5C4.41015 1.5 1.5 4.41015 1.5 8C1.5 11.5899 4.41015 14.5 8 14.5Z" stroke="currentColor" fill="none"/>
+                            <path d="M8 11V8M8 5V5.01" stroke="currentColor" stroke-linecap="round"/>
+                        </svg>
+                        <span>Your token is stored locally and never shared</span>
+                    </div>
+                </div>
+
+                <div class="login-actions">
+                    <button id="login-btn" class="login-btn" disabled>
+                        <span class="btn-text">Sign In</span>
+                        <div class="btn-loading">
+                            <div class="spinner"></div>
+                        </div>
+                    </button>
+                </div>
+
+                <div class="login-footer">
+                    <p>Don't have a token? <a href="#" id="help-link">Learn how to get one</a></p>
+                </div>
+            </div>
+
+            <div class="error-message" id="error-message">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="8" cy="8" r="7" stroke="currentColor" fill="none"/>
+                    <path d="M8 4V8M8 12V12.01" stroke="currentColor" stroke-linecap="round"/>
+                </svg>
+                <span id="error-text">Invalid token. Please try again.</span>
+            </div>
+        </div>
+
+        <div class="background-glow"></div>
+    </div>
+
+    <script src="js/login.js"></script>
+</body>
+</html>

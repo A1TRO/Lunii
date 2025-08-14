@@ -1,0 +1,32 @@
+{
+  "name": "lunii",
+  "version": "1.0.0",
+  "description": "Modern Electron Discord Self-Bot Dashboard",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder"
+  },
+  "keywords": ["electron", "discord", "selfbot", "dashboard"],
+  "author": "Lunii Team",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^26.0.0",
+    "electron-builder": "^24.6.4"
+  },
+  "dependencies": {
+    "discord.js-selfbot-v13": "^2.15.1"
+  },
+  "build": {
+    "appId": "com.lunii.dashboard",
+    "productName": "Lunii",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*"
+    ]
+  }
+}
