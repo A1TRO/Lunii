@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lunii Dashboard</title>
+    <link rel="stylesheet" href="styles/dashboard.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Title Bar -->
+    <div class="title-bar">
+        <div class="title-bar-left">
+            <div class="app-logo">
+                <img src="../assets/lunii-icon.png" alt="Lunii" width="16" height="16">
+            </div>
+            <span class="app-title">Lunii</span>
+        </div>
+        <div class="title-bar-controls">
+            <button class="control-btn" id="minimize-btn">−</button>
+            <button class="control-btn" id="maximize-btn">□</button>
+            <button class="control-btn close" id="close-btn">×</button>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <nav class="nav-menu">
+                <button class="nav-item active" data-page="home">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M7.5 15V12.5H12.5V15H16.25V10H18.75L10 2.5L1.25 10H3.75V15H7.5Z" fill="currentColor"/>
+                    </svg>
+                </button>
+                <button class="nav-item" data-page="profile">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="10" cy="6.25" r="3.75" fill="currentColor"/>
+                        <path d="M10 11.25C6.54822 11.25 3.75 14.0482 3.75 17.5H16.25C16.25 14.0482 13.4518 11.25 10 11.25Z" fill="currentColor"/>
+                    </svg>
+                </button>
+                <button class="nav-item" data-page="friends">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="7" cy="6" r="3" fill="currentColor"/>
+                        <circle cx="14" cy="6" r="2.5" fill="currentColor"/>
+                        <path d="M7 10.5C4.515 10.5 2.5 12.515 2.5 15V16.5H11.5V15C11.5 12.515 9.485 10.5 7 10.5Z" fill="currentColor"/>
+                        <path d="M14 10C12.62 10 11.5 11.12 11.5 12.5V16.5H17.5V12.5C17.5 11.12 16.38 10 15 10H14Z" fill="currentColor"/>
+                    </svg>
+                </button>
+                <button class="nav-item" data-page="commands">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M3.75 3.75L16.25 3.75C17.0784 3.75 17.75 4.42157 17.75 5.25L17.75 14.75C17.75 15.5784 17.0784 16.25 16.25 16.25L3.75 16.25C2.92157 16.25 2.25 15.5784 2.25 14.75L2.25 5.25C2.25 4.42157 2.92157 3.75 3.75 3.75Z" fill="currentColor"/>
+                        <path d="M6.25 7.5L8.75 10L6.25 12.5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M10 12.5H13.75" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+                    </svg>
+                </button>
+                <button class="nav-item" data-page="settings">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M10 12.5C11.3807 12.5 12.5 11.3807 12.5 10C12.5 8.61929 11.3807 7.5 10 7.5C8.61929 7.5 7.5 8.61929 7.5 10C7.5 11.3807 8.61929 12.5 10 12.5Z" fill="currentColor"/>
+                        <path d="M15.9492 11.25L17.4023 12.7031C17.6641 12.9648 17.6641 13.3906 17.4023 13.6523L15.8906 15.1641C15.6289 15.4258 15.2031 15.4258 14.9414 15.1641L13.4883 13.7109C12.7891 14.2109 11.9336 14.5 11 14.5H9C8.06641 14.5 7.21094 14.2109 6.51172 13.7109L5.05859 15.1641C4.79688 15.4258 4.37109 15.4258 4.10938 15.1641L2.59766 13.6523C2.33594 13.3906 2.33594 12.9648 2.59766 12.7031L4.05078 11.25C3.55078 10.5508 3.26172 9.69531 3.26172 8.76172V6.73828C3.26172 5.80469 3.55078 4.94922 4.05078 4.25L2.59766 2.79688C2.33594 2.53516 2.33594 2.10938 2.59766 1.84766L4.10938 0.335938C4.37109 0.0742188 4.79688 0.0742188 5.05859 0.335938L6.51172 1.78906C7.21094 1.28906 8.06641 1 9 1H11C11.9336 1 12.7891 1.28906 13.4883 1.78906L14.9414 0.335938C15.2031 0.0742188 15.6289 0.0742188 15.8906 0.335938L17.4023 1.84766C17.6641 2.10938 17.6641 2.53516 17.4023 2.79688L15.9492 4.25C16.4492 4.94922 16.7383 5.80469 16.7383 6.73828V8.76172C16.7383 9.69531 16.4492 10.5508 15.9492 11.25Z" fill="currentColor"/>
+                    </svg>
+                </button>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Header -->
+            <div class="content-header">
+                <div class="greeting">
+                    <h1>Hello, <span id="username">lunii.user</span> 👋</h1>
+                </div>
+                <div class="header-actions">
+                    <button class="switch-account-btn">Switch Account</button>
+                    <button class="add-account-btn">Add new</button>
+                </div>
+            </div>
+
+            <!-- Dashboard Grid -->
+            <div class="dashboard-grid">
+                <!-- Profile Panel -->
+                <div class="profile-panel panel">
+                    <div class="profile-header">
+                        <div class="avatar-container">
+                            <img src="https://cdn.discordapp.com/embed/avatars/0.png" alt="Avatar" class="avatar">
+                            <div class="status-indicator online"></div>
+                        </div>
+                        <div class="profile-info">
+                            <h3 id="profile-username">lunii.user</h3>
+                            <p id="profile-handle">lunii_user</p>
+                        </div>
+                        <div class="profile-badges">
+                            <div class="badge nitro" title="Discord Nitro">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                    <path d="M8 2L10 6H14L11 9L12 13L8 11L4 13L5 9L2 6H6L8 2Z" fill="currentColor"/>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="profile-stats">
+                        <div class="stat-group">
+                            <div class="stat-item">
+                                <div class="stat-circle">
+                                    <svg class="stat-progress" viewBox="0 0 36 36">
+                                        <path class="stat-bg" d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                        <path class="stat-fill servers-fill" stroke-dasharray="15, 100" d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                    </svg>
+                                    <div class="stat-text">
+                                        <span class="stat-value">15</span>
+                                        <span class="stat-max">/100</span>
+                                    </div>
+                                </div>
+                                <span class="stat-label">SERVERS</span>
+                            </div>
+
+                            <div class="stat-item">
+                                <div class="stat-circle">
+                                    <svg class="stat-progress" viewBox="0 0 36 36">
+                                        <path class="stat-bg" d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                        <path class="stat-fill friends-fill" stroke-dasharray="1, 100" d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                    </svg>
+                                    <div class="stat-text">
+                                        <span class="stat-value">1</span>
+                                        <span class="stat-max">/1000</span>
+                                    </div>
+                                </div>
+                                <span class="stat-label">FRIENDS</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="profile-details">
+                        <div class="detail-item">
+                            <span class="detail-label">User ID</span>
+                            <span class="detail-value" id="user-id">1068917349593391139</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Nitro status</span>
+                            <span class="detail-value status-inactive">Inactive</span>
+                        </div>
+                        <div class="detail-item uptime-item">
+                            <span class="detail-label">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                    <circle cx="8" cy="8" r="7" stroke="currentColor" fill="none"/>
+                                    <path d="M8 4V8L11 11" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                Uptime
+                            </span>
+                            <span class="uptime-display">
+                                <span id="uptime-days">00</span>
+                                <span id="uptime-hours">00</span>
+                                <span id="uptime-minutes">01</span>
+                                <span id="uptime-seconds">45</span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="profile-actions">
+                        <div class="version-info">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                <path d="M8 2L10 6H14L11 9L12 13L8 11L4 13L5 9L2 6H6L8 2Z" fill="currentColor"/>
+                            </svg>
+                            <span>Version</span>
+                            <span class="version-number">2.4.16</span>
+                        </div>
+                        <div class="commands-info">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                <path d="M2 4L6 2L10 4L14 2V12L10 14L6 12L2 14V4Z" fill="currentColor"/>
+                            </svg>
+                            <span>Commands used</span>
+                            <span class="commands-count">16</span>
+                        </div>
+                    </div>
+
+                    <div class="profile-toggles">
+                        <div class="toggle-item">
+                            <span>Enable Lunii Discoverable</span>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="discoverable-toggle" checked>
+                                <label for="discoverable-toggle"></label>
+                            </div>
+                        </div>
+                        <div class="toggle-item">
+                            <span>Enable Private Mode</span>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="private-toggle" checked>
+                                <label for="private-toggle"></label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notification Center -->
+                <div class="notification-panel panel">
+                    <div class="panel-header">
+                        <div class="panel-title">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                <path d="M10 2.5C7.79 2.5 6 4.29 6 6.5V10L4 12.5V14H16V12.5L14 10V6.5C14 4.29 12.21 2.5 10 2.5Z" fill="currentColor"/>
+                                <path d="M8.75 15.5H11.25C11.25 16.6046 10.3546 17.5 9.25 17.5H10.75C9.64543 17.5 8.75 16.6046 8.75 15.5Z" fill="currentColor"/>
+                            </svg>
+                            Notification Center
+                        </div>
+                        <button class="panel-action">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                <path d="M12 6L8 10L4 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div class="notifications-list">
+                        <div class="notification-item">
+                            <div class="notification-icon info">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                    <circle cx="8" cy="8" r="7" stroke="currentColor" fill="none"/>
+                                    <path d="M8 11V8M8 5V5.01" stroke="currentColor" stroke-linecap="round"/>
+                                </svg>
+                            </div>
+                            <div class="notification-content">
+                                <div class="notification-text">You got pinged! Hey @Lunii User, dm me quickly!</div>
+                                <div class="notification-meta">
+                                    <span class="notification-time">6 seconds ago</span>
+                                    <span class="notification-channel">#chat, DC</span>
+                                </div>
+                            </div>
+                            <div class="notification-actions">
+                                <button class="notification-action">
+                                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                        <circle cx="7" cy="7" r="6" stroke="currentColor" fill="none"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="notification-item">
+                            <div class="notification-icon success">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                    <circle cx="8" cy="8" r="7" stroke="currentColor" fill="none"/>
+                                    <path d="M5 8L7 10L11 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </div>
+                            <div class="notification-content">
+                                <div class="notification-text">Giveaway joiner: Enabled</div>
+                                <div class="notification-meta">
+                                    <span class="notification-time">12 seconds ago</span>
+                                    <span class="notification-channel">#chat, DC</span>
+                                </div>
+                            </div>
+                            <div class="notification-actions">
+                                <button class="notification-action">
+                                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                        <circle cx="7" cy="7" r="6" stroke="currentColor" fill="none"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="notification-item">
+                            <div class="notification-icon error">
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                    <circle cx="8" cy="8" r="7" stroke="currentColor" fill="none"/>
+                                    <path d="M8 4V8M8 12V12.01" stroke="currentColor" stroke-linecap="round"/>
+                                </svg>
+                            </div>
+                            <div class="notification-content">
+                                <div class="notification-text">Invalid command. Please try again.</div>
+                                <div class="notification-meta">
+                                    <span class="notification-time">27 seconds ago</span>
+                                    <span class="notification-channel">#chat, DC</span>
+                                </div>
+                            </div>
+                            <div class="notification-actions">
+                                <button class="notification-action">
+                                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                        <circle cx="7" cy="7" r="6" stroke="currentColor" fill="none"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+        
+        // Expose electronAPI to window
+        window.electronAPI = {
+            // Window controls
+            minimizeWindow: () => ipcRenderer.send('window-minimize'),
+            maximizeWindow: () => ipcRenderer.send('window-maximize'),
+            closeWindow: () => ipcRenderer.send('window-close'),
+            
+            // Authentication
+            login: (token) => ipcRenderer.invoke('login', token),
+            logout: () => ipcRenderer.send('logout'),
+            
+            // Discord API
+            getDiscordUserData: () => ipcRenderer.invoke('discord-get-user-data'),
+            getDiscordStats: () => ipcRenderer.invoke('discord-get-stats'),
+            updateDiscordSetting: (setting, value) => ipcRenderer.invoke('discord-update-setting', setting, value),
+            
+            // Event listeners
+            onDiscordNotification: (callback) => {
+                ipcRenderer.on('discord-notification', callback);
+            },
+            
+            // Update system
+            onUpdateAvailable: (callback) => {
+                ipcRenderer.on('update-available', callback);
+            },
+            
+            onUpdateDismissed: (callback) => {
+                ipcRenderer.on('update-dismissed', callback);
+            },
+            
+            onUpdaterProgress: (callback) => {
+                ipcRenderer.on('updater-progress', callback);
+            },
+            
+            // Send events
+            send: (channel, ...args) => {
+                ipcRenderer.send(channel, ...args);
+            },
+            
+            // Invoke methods
+            invoke: (channel, ...args) => {
+                return ipcRenderer.invoke(channel, ...args);
+            },
+            
+            // Remove listeners
+            removeAllListeners: (channel) => {
+                ipcRenderer.removeAllListeners(channel);
+            }
+        };
+    </script>
+    <script src="js/modal-manager.js"></script>
+    <script src="js/dashboard.js"></script>
+</body>
+</html>
