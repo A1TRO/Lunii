@@ -26,6 +26,11 @@ class DashboardManager {
         this.startDataRefresh();
         this.setupCustomStatus();
         this.setupTestModal();
+        this.setupServerManagement();
+        this.setupCommandCenter();
+        this.setupMessaging();
+        this.setupBackupSystem();
+        this.setupEnhancedAutomation();
     }
 
     setupWindowControls() {
@@ -153,6 +158,135 @@ class DashboardManager {
         
         clearNotificationsBtn.addEventListener('click', () => {
             this.clearAllNotifications();
+        });
+    }
+    
+    setupServerManagement() {
+        // Refresh servers button
+        document.getElementById('refresh-servers-btn')?.addEventListener('click', () => {
+            this.loadServersData();
+        });
+        
+        // Close server details
+        document.getElementById('close-server-details')?.addEventListener('click', () => {
+            document.getElementById('server-details').style.display = 'none';
+        });
+        
+        // Server action buttons
+        document.getElementById('view-channels-btn')?.addEventListener('click', () => {
+            this.toggleServerChannels();
+        });
+        
+        document.getElementById('view-emojis-btn')?.addEventListener('click', () => {
+            this.toggleServerEmojis();
+        });
+        
+        document.getElementById('backup-server-btn')?.addEventListener('click', () => {
+            this.backupSelectedServer();
+        });
+        
+        document.getElementById('clone-server-btn')?.addEventListener('click', () => {
+            this.cloneSelectedServer();
+        });
+        
+        document.getElementById('leave-server-btn')?.addEventListener('click', () => {
+            this.leaveSelectedServer();
+        });
+    }
+    
+    setupCommandCenter() {
+        // Command type change
+        document.getElementById('command-type')?.addEventListener('change', (e) => {
+            const maskOptions = document.getElementById('mask-options');
+            if (e.target.value === 'masked') {
+                maskOptions.style.display = 'block';
+            } else {
+                maskOptions.style.display = 'none';
+            }
+        });
+        
+        // AI Assist button
+        document.getElementById('ai-assist-btn')?.addEventListener('click', () => {
+            this.showAIAssistModal();
+        });
+        
+        // Save command
+        document.getElementById('save-command-btn')?.addEventListener('click', () => {
+            this.saveCommand();
+        });
+        
+        // Test command
+        document.getElementById('test-command-btn')?.addEventListener('click', () => {
+            this.testCommand();
+        });
+        
+        // Load saved commands
+        this.loadSavedCommands();
+    }
+    
+    setupMessaging() {
+        // Message type tabs
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                
+                const type = e.target.dataset.type;
+                document.getElementById('channel-selector').style.display = type === 'channel' ? 'grid' : 'none';
+                document.getElementById('dm-selector').style.display = type === 'dm' ? 'block' : 'none';
+            });
+        });
+        
+        // Send message button
+        document.getElementById('send-message-btn')?.addEventListener('click', () => {
+            this.sendMessage();
+        });
+        
+        // Load messaging data
+        this.loadMessagingData();
+    }
+    
+    setupBackupSystem() {
+        // Create backup button
+        document.getElementById('create-backup-btn')?.addEventListener('click', () => {
+            this.createServerBackup();
+        });
+        
+        // Start clone button
+        document.getElementById('start-clone-btn')?.addEventListener('click', () => {
+            this.startServerClone();
+        });
+        
+        // Load backup data
+        this.loadBackupData();
+    }
+    
+    setupEnhancedAutomation() {
+        // AFK configuration
+        document.getElementById('config-afk-btn')?.addEventListener('click', () => {
+            this.configureAFK();
+        });
+        
+        // Reaction configuration
+        document.getElementById('config-reaction-btn')?.addEventListener('click', () => {
+            this.configureAutoReaction();
+        });
+        
+        // Enhanced automation toggles
+        const automationToggles = [
+            'auto-afk-reply',
+            'auto-reaction',
+            'message-logger',
+            'anti-ghost-ping'
+        ];
+        
+        automationToggles.forEach(toggleId => {
+            const toggle = document.getElementById(toggleId);
+            if (toggle) {
+                toggle.addEventListener('change', (e) => {
+                    this.updateAutomationSetting(toggleId, e.target.checked);
+                });
+            }
         });
     }
     
@@ -384,6 +518,194 @@ class DashboardManager {
         }
     }
     
+    updateServersList(servers) {
+        const serversGrid = document.getElementById('servers-grid');
+        if (!servers || servers.length === 0) {
+            serversGrid.innerHTML = `
+                <div class="empty-state">
+                    <p>No servers found</p>
+                    <span>Join some servers to see them here</span>
+                </div>
+            `;
+            return;
+        }
+        
+        serversGrid.innerHTML = '';
+        servers.forEach(server => {
+            const serverElement = this.createServerElement(server);
+            serversGrid.appendChild(serverElement);
+        });
+    }
+    
+    createServerElement(server) {
+        const div = document.createElement('div');
+        div.className = 'server-card';
+        div.dataset.serverId = server.id;
+        div.innerHTML = `
+            <div class="server-icon">
+                <img src="${server.icon || 'https://cdn.discordapp.com/embed/avatars/0.png'}" alt="${server.name}">
+            </div>
+            <div class="server-info">
+                <h4>${server.name}</h4>
+                <p>${server.memberCount || 0} members</p>
+                <p class="server-id">ID: ${server.id}</p>
+            </div>
+        `;
+        
+        div.addEventListener('click', () => {
+            this.selectServer(server.id);
+        });
+        
+        return div;
+    }
+    
+    async selectServer(serverId) {
+        try {
+            // Remove previous selection
+            document.querySelectorAll('.server-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            
+            // Add selection to clicked card
+            const selectedCard = document.querySelector(`[data-server-id="${serverId}"]`);
+            if (selectedCard) {
+                selectedCard.classList.add('selected');
+            }
+            
+            // Load server details
+            const serverDetails = await window.electronAPI.invoke('discord-get-server-details', serverId);
+            if (serverDetails) {
+                this.showServerDetails(serverDetails);
+            }
+        } catch (error) {
+            console.error('Error selecting server:', error);
+        }
+    }
+    
+    showServerDetails(server) {
+        const detailsSection = document.getElementById('server-details');
+        
+        // Update server info
+        document.getElementById('selected-server-name').textContent = server.name;
+        document.getElementById('server-detail-icon').src = server.icon || 'https://cdn.discordapp.com/embed/avatars/0.png';
+        document.getElementById('server-detail-name').textContent = server.name;
+        document.getElementById('server-detail-members').textContent = `${server.memberCount} members`;
+        document.getElementById('server-detail-id').textContent = `ID: ${server.id}`;
+        
+        // Store server data for actions
+        detailsSection.dataset.serverId = server.id;
+        detailsSection.dataset.serverData = JSON.stringify(server);
+        
+        // Show details section
+        detailsSection.style.display = 'block';
+    }
+    
+    toggleServerChannels() {
+        const channelsSection = document.getElementById('server-channels');
+        const isVisible = channelsSection.style.display !== 'none';
+        
+        if (isVisible) {
+            channelsSection.style.display = 'none';
+        } else {
+            const serverData = JSON.parse(document.getElementById('server-details').dataset.serverData);
+            this.displayServerChannels(serverData.channels);
+            channelsSection.style.display = 'block';
+        }
+    }
+    
+    displayServerChannels(channels) {
+        const channelsList = document.getElementById('channels-list');
+        channelsList.innerHTML = '';
+        
+        channels.forEach(channel => {
+            const channelElement = document.createElement('div');
+            channelElement.className = 'channel-item';
+            channelElement.innerHTML = `
+                <span class="channel-name"># ${channel.name}</span>
+                <span class="channel-type">${channel.type}</span>
+            `;
+            channelsList.appendChild(channelElement);
+        });
+    }
+    
+    toggleServerEmojis() {
+        const emojisSection = document.getElementById('server-emojis');
+        const isVisible = emojisSection.style.display !== 'none';
+        
+        if (isVisible) {
+            emojisSection.style.display = 'none';
+        } else {
+            const serverData = JSON.parse(document.getElementById('server-details').dataset.serverData);
+            this.displayServerEmojis(serverData.emojis, serverData.stickers);
+            emojisSection.style.display = 'block';
+        }
+    }
+    
+    displayServerEmojis(emojis, stickers) {
+        const emojisGrid = document.getElementById('emojis-grid');
+        emojisGrid.innerHTML = '';
+        
+        // Display emojis
+        emojis.forEach(emoji => {
+            const emojiElement = document.createElement('div');
+            emojiElement.className = 'emoji-item';
+            emojiElement.innerHTML = `
+                <img src="${emoji.url}" alt="${emoji.name}" title="${emoji.name}">
+                <span>${emoji.name}</span>
+            `;
+            emojisGrid.appendChild(emojiElement);
+        });
+        
+        // Display stickers
+        stickers.forEach(sticker => {
+            const stickerElement = document.createElement('div');
+            stickerElement.className = 'sticker-item';
+            stickerElement.innerHTML = `
+                <img src="${sticker.url}" alt="${sticker.name}" title="${sticker.description}">
+                <span>${sticker.name}</span>
+            `;
+            emojisGrid.appendChild(stickerElement);
+        });
+    }
+    
+    async backupSelectedServer() {
+        const serverId = document.getElementById('server-details').dataset.serverId;
+        if (!serverId) return;
+        
+        const options = {
+            channels: document.getElementById('backup-channels')?.checked || false,
+            roles: document.getElementById('backup-roles')?.checked || false,
+            emojis: document.getElementById('backup-emojis')?.checked || false,
+            settings: document.getElementById('backup-settings')?.checked || false
+        };
+        
+        try {
+            const result = await window.electronAPI.invoke('discord-backup-server', serverId, options);
+            if (result.success) {
+                Modal.toast({
+                    title: 'Backup Created',
+                    message: 'Server backup created successfully',
+                    type: 'success',
+                    duration: 3000
+                });
+            } else {
+                Modal.toast({
+                    title: 'Backup Failed',
+                    message: result.error,
+                    type: 'error',
+                    duration: 5000
+                });
+            }
+        } catch (error) {
+            Modal.toast({
+                title: 'Backup Error',
+                message: 'Failed to create backup',
+                type: 'error',
+                duration: 5000
+            });
+        }
+    }
+    
     loadCommandHistory() {
         // Load command history from local storage or API
         const history = JSON.parse(localStorage.getItem('commandHistory') || '[]');
@@ -412,32 +734,6 @@ class DashboardManager {
             <div class="friend-info">
                 <span class="friend-name">${friend.username}</span>
                 <span class="friend-status">${friend.status || 'Offline'}</span>
-            </div>
-        `;
-        return div;
-    }
-    
-    updateServersList(servers) {
-        const serversGrid = document.querySelector('.servers-grid');
-        if (!servers || servers.length === 0) return;
-        
-        serversGrid.innerHTML = '';
-        servers.forEach(server => {
-            const serverElement = this.createServerElement(server);
-            serversGrid.appendChild(serverElement);
-        });
-    }
-    
-    createServerElement(server) {
-        const div = document.createElement('div');
-        div.className = 'server-card';
-        div.innerHTML = `
-            <div class="server-icon">
-                <img src="${server.icon || 'https://cdn.discordapp.com/embed/avatars/0.png'}" alt="${server.name}">
-            </div>
-            <div class="server-info">
-                <h4>${server.name}</h4>
-                <p>${server.memberCount || 0} members</p>
             </div>
         `;
         return div;
@@ -613,6 +909,350 @@ class DashboardManager {
                 });
             }
         });
+    }
+
+    async saveCommand() {
+        const name = document.getElementById('command-name').value.trim();
+        const type = document.getElementById('command-type').value;
+        const content = document.getElementById('command-content').value.trim();
+        const maskText = document.getElementById('mask-text').value.trim();
+        
+        if (!name || !content) {
+            Modal.toast({
+                title: 'Invalid Command',
+                message: 'Please fill in all required fields',
+                type: 'warning',
+                duration: 3000
+            });
+            return;
+        }
+        
+        const command = {
+            name,
+            type,
+            content,
+            maskText: type === 'masked' ? maskText : null
+        };
+        
+        try {
+            const result = await window.electronAPI.invoke('discord-save-command', command);
+            if (result.success) {
+                Modal.toast({
+                    title: 'Command Saved',
+                    message: 'Command saved successfully',
+                    type: 'success',
+                    duration: 3000
+                });
+                
+                // Clear form
+                document.getElementById('command-name').value = '';
+                document.getElementById('command-content').value = '';
+                document.getElementById('mask-text').value = '';
+                
+                // Reload saved commands
+                this.loadSavedCommands();
+            }
+        } catch (error) {
+            Modal.toast({
+                title: 'Save Error',
+                message: 'Failed to save command',
+                type: 'error',
+                duration: 5000
+            });
+        }
+    }
+    
+    async loadSavedCommands() {
+        try {
+            const commands = await window.electronAPI.invoke('discord-get-saved-commands');
+            this.displaySavedCommands(commands);
+        } catch (error) {
+            console.error('Error loading saved commands:', error);
+        }
+    }
+    
+    displaySavedCommands(commands) {
+        const commandsList = document.getElementById('saved-commands-list');
+        
+        if (!commands || commands.length === 0) {
+            commandsList.innerHTML = `
+                <div class="empty-state">
+                    <p>No saved commands yet</p>
+                    <span>Create your first command above</span>
+                </div>
+            `;
+            return;
+        }
+        
+        commandsList.innerHTML = '';
+        commands.forEach(command => {
+            const commandElement = document.createElement('div');
+            commandElement.className = 'saved-command-item';
+            commandElement.innerHTML = `
+                <div class="command-info">
+                    <h5>${command.name}</h5>
+                    <p>${command.type} - ${command.content.substring(0, 50)}...</p>
+                </div>
+                <div class="command-item-actions">
+                    <button class="command-item-btn" onclick="dashboard.executeCommand('${command.id}')">Run</button>
+                    <button class="command-item-btn" onclick="dashboard.editCommand('${command.id}')">Edit</button>
+                    <button class="command-item-btn" onclick="dashboard.deleteCommand('${command.id}')">Delete</button>
+                </div>
+            `;
+            commandsList.appendChild(commandElement);
+        });
+    }
+    
+    async showAIAssistModal() {
+        const prompt = await Modal.prompt({
+            title: 'AI Command Assistant',
+            message: 'Describe what you want your command to do:',
+            placeholder: 'e.g., Create a command that sends a welcome message with user mention',
+            multiline: true
+        });
+        
+        if (prompt) {
+            const loading = Modal.loading({
+                title: 'AI Generating...',
+                message: 'Creating your command with AI assistance...'
+            });
+            
+            try {
+                const result = await window.electronAPI.invoke('discord-ai-assist', 
+                    `Create a Discord command based on this description: ${prompt}. 
+                     Provide the command name, type (slash/prefix/masked), and content.`
+                );
+                
+                loading.close();
+                
+                if (result.success) {
+                    // Parse AI response and populate form
+                    this.populateCommandFromAI(result.response);
+                } else {
+                    Modal.toast({
+                        title: 'AI Error',
+                        message: result.error,
+                        type: 'error',
+                        duration: 5000
+                    });
+                }
+            } catch (error) {
+                loading.close();
+                Modal.toast({
+                    title: 'AI Error',
+                    message: 'Failed to get AI assistance',
+                    type: 'error',
+                    duration: 5000
+                });
+            }
+        }
+    }
+    
+    populateCommandFromAI(aiResponse) {
+        // Simple parsing of AI response
+        // In a real implementation, you'd want more sophisticated parsing
+        const lines = aiResponse.split('\n');
+        let name = '', type = 'slash', content = '';
+        
+        lines.forEach(line => {
+            if (line.toLowerCase().includes('name:')) {
+                name = line.split(':')[1]?.trim() || '';
+            } else if (line.toLowerCase().includes('type:')) {
+                type = line.split(':')[1]?.trim().toLowerCase() || 'slash';
+            } else if (line.toLowerCase().includes('content:')) {
+                content = line.split(':')[1]?.trim() || '';
+            }
+        });
+        
+        // Populate form
+        if (name) document.getElementById('command-name').value = name;
+        if (type) document.getElementById('command-type').value = type;
+        if (content) document.getElementById('command-content').value = content;
+        
+        Modal.toast({
+            title: 'AI Assist Complete',
+            message: 'Command generated! Review and save.',
+            type: 'success',
+            duration: 3000
+        });
+    }
+    
+    async sendMessage() {
+        const activeTab = document.querySelector('.tab-btn.active').dataset.type;
+        const content = document.getElementById('message-content').value.trim();
+        
+        if (!content) {
+            Modal.toast({
+                title: 'Empty Message',
+                message: 'Please enter a message to send',
+                type: 'warning',
+                duration: 3000
+            });
+            return;
+        }
+        
+        let target;
+        if (activeTab === 'channel') {
+            target = document.getElementById('target-channel').value;
+        } else {
+            target = document.getElementById('target-friend').value;
+        }
+        
+        if (!target) {
+            Modal.toast({
+                title: 'No Target',
+                message: 'Please select a target for your message',
+                type: 'warning',
+                duration: 3000
+            });
+            return;
+        }
+        
+        const messageData = {
+            type: activeTab,
+            target: target,
+            content: content,
+            options: {
+                embed: document.getElementById('message-embed').checked,
+                tts: document.getElementById('message-tts').checked
+            }
+        };
+        
+        try {
+            const result = await window.electronAPI.invoke('discord-send-message', messageData);
+            if (result.success) {
+                Modal.toast({
+                    title: 'Message Sent',
+                    message: 'Your message was sent successfully',
+                    type: 'success',
+                    duration: 3000
+                });
+                
+                // Clear message content
+                document.getElementById('message-content').value = '';
+            } else {
+                Modal.toast({
+                    title: 'Send Failed',
+                    message: result.error,
+                    type: 'error',
+                    duration: 5000
+                });
+            }
+        } catch (error) {
+            Modal.toast({
+                title: 'Send Error',
+                message: 'Failed to send message',
+                type: 'error',
+                duration: 5000
+            });
+        }
+    }
+    
+    async loadMessagingData() {
+        try {
+            // Load servers for channel selector
+            const servers = await window.electronAPI.invoke('discord-get-servers');
+            const serverSelect = document.getElementById('target-server');
+            
+            serverSelect.innerHTML = '<option value="">Select a server...</option>';
+            servers.forEach(server => {
+                const option = document.createElement('option');
+                option.value = server.id;
+                option.textContent = server.name;
+                serverSelect.appendChild(option);
+            });
+            
+            // Load friends for DM selector
+            const friends = await window.electronAPI.invoke('discord-get-friends');
+            const friendSelect = document.getElementById('target-friend');
+            
+            friendSelect.innerHTML = '<option value="">Select a friend...</option>';
+            friends.forEach(friend => {
+                const option = document.createElement('option');
+                option.value = friend.id;
+                option.textContent = friend.username;
+                friendSelect.appendChild(option);
+            });
+            
+            // Server change handler for channels
+            serverSelect.addEventListener('change', async (e) => {
+                const serverId = e.target.value;
+                if (serverId) {
+                    const serverDetails = await window.electronAPI.invoke('discord-get-server-details', serverId);
+                    const channelSelect = document.getElementById('target-channel');
+                    
+                    channelSelect.innerHTML = '<option value="">Select a channel...</option>';
+                    serverDetails.channels.forEach(channel => {
+                        if (channel.type === 'GUILD_TEXT') {
+                            const option = document.createElement('option');
+                            option.value = channel.id;
+                            option.textContent = `# ${channel.name}`;
+                            channelSelect.appendChild(option);
+                        }
+                    });
+                }
+            });
+        } catch (error) {
+            console.error('Error loading messaging data:', error);
+        }
+    }
+    
+    async configureAFK() {
+        const currentMessage = this.afkSettings?.message || "I'm currently AFK. I'll get back to you soon!";
+        
+        const newMessage = await Modal.prompt({
+            title: 'Configure AFK Auto-Reply',
+            message: 'Enter your AFK message:',
+            defaultValue: currentMessage,
+            multiline: true
+        });
+        
+        if (newMessage !== null) {
+            const settings = {
+                enabled: document.getElementById('auto-afk-reply').checked,
+                message: newMessage
+            };
+            
+            try {
+                const result = await window.electronAPI.invoke('discord-set-afk', settings);
+                if (result.success) {
+                    Modal.toast({
+                        title: 'AFK Configured',
+                        message: 'AFK auto-reply settings updated',
+                        type: 'success',
+                        duration: 3000
+                    });
+                }
+            } catch (error) {
+                Modal.toast({
+                    title: 'Configuration Error',
+                    message: 'Failed to update AFK settings',
+                    type: 'error',
+                    duration: 5000
+                });
+            }
+        }
+    }
+    
+    async updateAutomationSetting(setting, enabled) {
+        try {
+            const result = await window.electronAPI.updateDiscordSetting(setting, enabled);
+            if (result.success) {
+                Modal.toast({
+                    title: 'Setting Updated',
+                    message: `${setting} has been ${enabled ? 'enabled' : 'disabled'}`,
+                    type: 'success',
+                    duration: 3000
+                });
+            }
+        } catch (error) {
+            Modal.toast({
+                title: 'Update Failed',
+                message: 'Failed to update automation setting',
+                type: 'error',
+                duration: 5000
+            });
+        }
     }
 
     async updateDiscordSetting(setting, value) {
@@ -810,7 +1450,7 @@ class DashboardManager {
 
 // Initialize dashboard when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    new DashboardManager();
+    window.dashboard = new DashboardManager();
 });
 
 // Add smooth scrolling for notifications
