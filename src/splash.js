@@ -1,3 +1,4 @@
+
 class SplashManager {
     constructor() {
         this.progressBar = document.getElementById('loading-progress');
@@ -6,27 +7,28 @@ class SplashManager {
         this.versionElement = document.getElementById('app-version');
         
         this.quotes = [
-            "🚀 Initializing Discord connection...",
+            "Initializing Discord connection...",
             "⚡ Loading your servers and channels...",
-            "🎯 Preparing advanced dashboard...",
-            "🤖 Setting up automation features...",
-            "🔔 Configuring smart notifications...",
-            "💎 Welcome to the future of Discord!",
-            "🌟 Discord, but supercharged.",
-            "🎮 Your personal Discord command center.",
-            "✨ Enhancing your Discord experience...",
-            "🛡️ Loading security features...",
-            "📊 Preparing analytics dashboard...",
-            "🎨 Customizing your interface...",
-            "⚙️ Optimizing performance...",
-            "🎉 Almost ready to launch!",
-            "🔥 Lunii - Discord Self-Bot Revolution",
-            "💫 Making Discord work for you...",
-            "🎪 Loading the magic...",
-            "🌈 Bringing colors to your Discord...",
-            "🎵 Tuning up the experience...",
-            "🚀 Ready for takeoff!"
+            "✦ Preparing advanced dashboard...",
+            "⧉ Setting up automation features...",
+            "✱ Configuring smart notifications...",
+            "◆ Welcome to the future of Discord!",
+            "✪ Discord, but supercharged.",
+            "⊞ Your personal Discord command center.",
+            "✧ Enhancing your Discord experience...",
+            "⛨ Loading security features...",
+            "▣ Preparing analytics dashboard...",
+            "◈ Customizing your interface...",
+            "⛭ Optimizing performance...",
+            "✹ Almost ready to launch!",
+            "❖ Lunii - Discord Self-Bot Revolution",
+            "✦ Making Discord work for you...",
+            "⊹ Loading the magic...",
+            "✷ Bringing colors to your Discord...",
+            "♬ Tuning up the experience...",
+            "Ready for takeoff!"
         ];
+        
         
         this.currentQuoteIndex = 0;
         this.progress = 0;
@@ -139,8 +141,8 @@ class SplashManager {
             
             // Notify main process that splash is complete
             setTimeout(() => {
-                if (window.electronAPI && window.electronAPI.send) {
-                    window.electronAPI.send('splash-complete');
+                if (window.electronAPI) {
+                    ipcRenderer.send('splash-complete');
                 }
             }, 500);
         }, 500);
