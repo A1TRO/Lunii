@@ -22,6 +22,29 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('discord-notification', callback);
   },
   
+  // Update system
+  onUpdateAvailable: (callback) => {
+    ipcRenderer.on('update-available', callback);
+  },
+  
+  onUpdateDismissed: (callback) => {
+    ipcRenderer.on('update-dismissed', callback);
+  },
+  
+  onUpdaterProgress: (callback) => {
+    ipcRenderer.on('updater-progress', callback);
+  },
+  
+  // Send events
+  send: (channel, ...args) => {
+    ipcRenderer.send(channel, ...args);
+  },
+  
+  // Invoke methods
+  invoke: (channel, ...args) => {
+    return ipcRenderer.invoke(channel, ...args);
+  },
+  
   // Remove listeners
   removeAllListeners: (channel) => {
     ipcRenderer.removeAllListeners(channel);

@@ -80,6 +80,15 @@ class DashboardManager {
         window.electronAPI.onDiscordNotification((event, notification) => {
             this.addNotification(notification);
         });
+        
+        // Listen for update notifications
+        window.electronAPI.onUpdateAvailable((event, updateData) => {
+            this.showUpdateNotification(updateData);
+        });
+        
+        window.electronAPI.onUpdateDismissed(() => {
+            // Handle update dismissed if needed
+        });
     }
 
     setupToggles() {
@@ -407,6 +416,23 @@ class DashboardManager {
         setTimeout(() => {
             notificationItem.remove();
         }, 300);
+    }
+    
+    showUpdateNotification(updateData) {
+        Modal.confirm({
+            title: 'Update Available',
+            message: `Lunii ${updateData.latestVersion} is now available!`,
+            details: `You're currently running version ${updateData.currentVersion}. Would you like to download and install the update now?`,
+            type: 'info',
+            confirmText: 'Update Now',
+            cancelText: 'Later'
+        }).then(confirmed => {
+            if (confirmed) {
+                window.electronAPI.invoke('updater-show-update-window');
+            } else {
+                window.electronAPI.invoke('updater-dismiss-notification');
+            }
+        });
     }
 }
 

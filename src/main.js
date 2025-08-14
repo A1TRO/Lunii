@@ -1,12 +1,14 @@
 const { app, BrowserWindow, ipcMain, Menu } = require('electron');
 const path = require('path');
 const DiscordClient = require('./discord/client');
+const AppUpdater = require('./updater/updater');
 
 class LuniiApp {
   constructor() {
     this.mainWindow = null;
     this.isLoggedIn = false;
     this.discordClient = new DiscordClient();
+    this.appUpdater = new AppUpdater();
   }
 
   createWindow() {
@@ -32,6 +34,9 @@ class LuniiApp {
 
     this.mainWindow.once('ready-to-show', () => {
       this.mainWindow.show();
+      
+      // Set main window for updater and check for updates
+      this.appUpdater.setMainWindow(this.mainWindow);
     });
 
     this.mainWindow.on('closed', () => {
@@ -88,6 +93,12 @@ class LuniiApp {
       this.mainWindow.loadFile('src/login.html');
     });
 
+    // Handle app restart
+    ipcMain.handle('app-restart', () => {
+      app.relaunch();
+      app.exit();
+    });
+
     // Forward Discord IPC calls to the Discord client
     // The Discord client handles its own IPC setup
   }
@@ -106,6 +117,7 @@ class LuniiApp {
 
     app.on('window-all-closed', () => {
       if (process.platform !== 'darwin') {
+        this.appUpdater.destroy();
         app.quit();
       }
     });

@@ -14,6 +14,9 @@ class LoginManager {
         this.setupEventListeners();
         this.setupWindowControls();
         this.tokenInput.focus();
+        
+        // Listen for update notifications
+        this.setupUpdateListeners();
     }
 
     setupEventListeners() {
@@ -133,6 +136,30 @@ class LoginManager {
 Your token gives full access to your Discord account.`,
             type: 'warning',
             confirmText: 'Got it'
+        });
+    }
+    
+    setupUpdateListeners() {
+        // Listen for update notifications
+        window.electronAPI.onUpdateAvailable((event, updateData) => {
+            this.showUpdateNotification(updateData);
+        });
+    }
+    
+    showUpdateNotification(updateData) {
+        Modal.confirm({
+            title: 'Update Available',
+            message: `Lunii ${updateData.latestVersion} is now available!`,
+            details: `You're currently running version ${updateData.currentVersion}. Would you like to download and install the update now?`,
+            type: 'info',
+            confirmText: 'Update Now',
+            cancelText: 'Later'
+        }).then(confirmed => {
+            if (confirmed) {
+                window.electronAPI.invoke('updater-show-update-window');
+            } else {
+                window.electronAPI.invoke('updater-dismiss-notification');
+            }
         });
     }
 }
