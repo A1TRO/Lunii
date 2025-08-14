@@ -1,4 +1,3 @@
-const { ipcRenderer } = require('electron');
 const Modal = require('./modal-manager');
 
 class LoginManager {
@@ -48,15 +47,15 @@ class LoginManager {
 
     setupWindowControls() {
         document.getElementById('minimize-btn').addEventListener('click', () => {
-            ipcRenderer.send('window-minimize');
+            window.electronAPI.minimizeWindow();
         });
 
         document.getElementById('maximize-btn').addEventListener('click', () => {
-            ipcRenderer.send('window-maximize');
+            window.electronAPI.maximizeWindow();
         });
 
         document.getElementById('close-btn').addEventListener('click', () => {
-            ipcRenderer.send('window-close');
+            window.electronAPI.closeWindow();
         });
     }
 
@@ -82,7 +81,7 @@ class LoginManager {
         this.hideError();
 
         try {
-            const result = await ipcRenderer.invoke('login', token);
+            const result = await window.electronAPI.login(token);
             
             if (result.success) {
                 // Login successful - main process will handle navigation

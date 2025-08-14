@@ -1,4 +1,3 @@
-const { ipcRenderer } = require('electron');
 const Modal = require('./modal-manager');
 
 class DashboardManager {
@@ -28,15 +27,15 @@ class DashboardManager {
 
     setupWindowControls() {
         document.getElementById('minimize-btn').addEventListener('click', () => {
-            ipcRenderer.send('window-minimize');
+            window.electronAPI.minimizeWindow();
         });
 
         document.getElementById('maximize-btn').addEventListener('click', () => {
-            ipcRenderer.send('window-maximize');
+            window.electronAPI.maximizeWindow();
         });
 
         document.getElementById('close-btn').addEventListener('click', () => {
-            ipcRenderer.send('window-close');
+            window.electronAPI.closeWindow();
         });
     }
 
@@ -78,7 +77,7 @@ class DashboardManager {
 
     setupDiscordListeners() {
         // Listen for Discord notifications
-        ipcRenderer.on('discord-notification', (event, notification) => {
+        window.electronAPI.onDiscordNotification((event, notification) => {
             this.addNotification(notification);
         });
     }
@@ -121,8 +120,8 @@ class DashboardManager {
 
     async loadDiscordData() {
         try {
-            const userData = await ipcRenderer.invoke('discord-get-user-data');
-            const stats = await ipcRenderer.invoke('discord-get-stats');
+            const userData = await window.electronAPI.getDiscordUserData();
+            const stats = await window.electronAPI.getDiscordStats();
             
             if (userData) {
                 this.currentUser = userData;
@@ -140,7 +139,7 @@ class DashboardManager {
 
     async refreshDiscordStats() {
         try {
-            const stats = await ipcRenderer.invoke('discord-get-stats');
+            const stats = await window.electronAPI.getDiscordStats();
             if (stats) {
                 this.discordStats = stats;
                 this.updateStatsInterface(stats);
@@ -262,7 +261,7 @@ class DashboardManager {
                 
                 setTimeout(() => {
                     loading.close();
-                    ipcRenderer.send('logout');
+                    window.electronAPI.logout();
                     Modal.toast({
                         title: 'Logged out',
                         message: 'Successfully disconnected from Discord',
@@ -277,7 +276,7 @@ class DashboardManager {
         console.log(`Setting ${setting} to ${value}`);
         
         try {
-            const result = await ipcRenderer.invoke('discord-update-setting', setting, value);
+            const result = await window.electronAPI.updateDiscordSetting(setting, value);
             if (result.success) {
                 Modal.toast({
                     title: 'Setting Updated',

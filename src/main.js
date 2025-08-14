@@ -16,12 +16,12 @@ class LuniiApp {
       minWidth: 1000,
       minHeight: 600,
       webPreferences: {
-        nodeIntegration: true,
-        contextIsolation: false,
-        enableRemoteModule: true
+        nodeIntegration: false,
+        contextIsolation: true,
+        enableRemoteModule: false,
+        preload: path.join(__dirname, 'preload.js')
       },
       frame: false,
-      titleBarStyle: 'hidden',
       backgroundColor: '#0B1426',
       show: false,
       icon: path.join(__dirname, '../assets/lunii-icon.png')
