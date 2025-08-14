@@ -32,6 +32,16 @@ class DiscordClient {
             startTime: null
         };
         this.savedCommands = this.loadSavedCommands();
+        this.messageLogger = {
+            enabled: true,
+            logs: [],
+            maxLogs: 1000
+        };
+        this.antiGhostPing = {
+            enabled: true,
+            logs: []
+        };
+        this.messageTemplates = this.loadMessageTemplates();
         
         this.setupIPC();
     }
@@ -122,6 +132,68 @@ class DiscordClient {
         // Handle AFK settings
         ipcMain.handle('discord-set-afk', (event, settings) => {
             return this.setAFK(settings);
+        });
+        
+        // Handle message logging
+        ipcMain.handle('discord-get-message-logs', () => {
+            return this.getMessageLogs();
+        });
+        
+        ipcMain.handle('discord-clear-message-logs', () => {
+            return this.clearMessageLogs();
+        });
+        
+        // Handle anti-ghost ping
+        ipcMain.handle('discord-get-ghost-ping-logs', () => {
+            return this.getGhostPingLogs();
+        });
+        
+        ipcMain.handle('discord-clear-ghost-ping-logs', () => {
+            return this.clearGhostPingLogs();
+        });
+        
+        // Handle server management
+        ipcMain.handle('discord-get-server-channels', (event, serverId) => {
+            return this.getServerChannels(serverId);
+        });
+        
+        ipcMain.handle('discord-get-server-members', (event, serverId) => {
+            return this.getServerMembers(serverId);
+        });
+        
+        ipcMain.handle('discord-kick-member', async (event, serverId, memberId, reason) => {
+            return await this.kickMember(serverId, memberId, reason);
+        });
+        
+        ipcMain.handle('discord-ban-member', async (event, serverId, memberId, reason) => {
+            return await this.banMember(serverId, memberId, reason);
+        });
+        
+        // Handle message templates
+        ipcMain.handle('discord-get-message-templates', () => {
+            return this.getMessageTemplates();
+        });
+        
+        ipcMain.handle('discord-save-message-template', (event, template) => {
+            return this.saveMessageTemplate(template);
+        });
+        
+        ipcMain.handle('discord-delete-message-template', (event, templateId) => {
+            return this.deleteMessageTemplate(templateId);
+        });
+        
+        // Handle Gemini AI
+        ipcMain.handle('discord-setup-gemini', (event, apiKey) => {
+            return this.initializeGeminiAI(apiKey);
+        });
+        
+        // Handle backup operations
+        ipcMain.handle('discord-get-backups', () => {
+            return this.getBackups();
+        });
+        
+        ipcMain.handle('discord-restore-backup', async (event, backupId, serverId) => {
+            return await this.restoreBackup(backupId, serverId);
         });
     }
 
@@ -224,16 +296,24 @@ class DiscordClient {
         this.client.on('messageCreate', (message) => {
             this.stats.messagesReceived++;
             
+            // Log message
+            this.logMessage(message);
+            
             // Check for mentions
             if (message.mentions.has(this.client.user)) {
+                const formattedContent = this.formatMessageContent(message.content, message.guild);
+                const authorName = this.formatUserName(message.author);
+                
                 this.sendNotification({
                     type: 'mention',
-                    title: 'You got pinged!',
-                    content: message.content,
-                    author: message.author.username,
+                    title: `${authorName} mentioned you!`,
+                    content: formattedContent,
+                    author: authorName,
                     channel: message.channel.name || 'DM',
                     guild: message.guild?.name || 'Direct Message',
-                    timestamp: Date.now()
+                    timestamp: Date.now(),
+                    messageId: message.id,
+                    channelId: message.channel.id
                 });
             }
             
@@ -245,14 +325,19 @@ class DiscordClient {
             
             // Enhanced giveaway detection
             if (hasGiveawayKeyword && message.guild && this.isVerifiedGiveawayBot(message.author)) {
+                const formattedContent = this.formatMessageContent(message.content, message.guild);
+                const authorName = this.formatUserName(message.author);
+                
                 this.sendNotification({
                     type: 'success',
                     title: 'Giveaway Detected',
-                    content: `Verified giveaway found in ${message.guild.name}`,
-                    author: message.author.username,
+                    content: formattedContent,
+                    author: authorName,
                     channel: message.channel.name,
                     guild: message.guild.name,
-                    timestamp: Date.now()
+                    timestamp: Date.now(),
+                    messageId: message.id,
+                    channelId: message.channel.id
                 });
                 
                 // Auto-join if enabled
@@ -264,6 +349,21 @@ class DiscordClient {
             // AFK auto-reply
             if (this.afkSettings.enabled && message.mentions.has(this.client.user)) {
                 this.handleAFKReply(message);
+            }
+        });
+        
+        // Message delete events for ghost ping detection
+        this.client.on('messageDelete', (message) => {
+            if (this.antiGhostPing.enabled && message.mentions?.has(this.client.user)) {
+                this.logGhostPing(message);
+            }
+        });
+        
+        // Message update events
+        this.client.on('messageUpdate', (oldMessage, newMessage) => {
+            if (oldMessage.mentions?.has(this.client.user) && !newMessage.mentions?.has(this.client.user)) {
+                // Mention was removed - potential ghost ping
+                this.logGhostPing(oldMessage, 'edited');
             }
         });
 
@@ -378,6 +478,374 @@ class DiscordClient {
             console.error('Error sending AFK reply:', error);
         }
     }
+    
+    formatUserName(user) {
+        if (!user) return 'Unknown User';
+        
+        // Handle different user types and formats
+        const displayName = user.displayName || user.globalName;
+        const username = user.username;
+        
+        if (displayName && displayName !== username) {
+            return `${displayName} (@${username})`;
+        }
+        
+        if (user.discriminator && user.discriminator !== '0') {
+            return `${username}#${user.discriminator}`;
+        }
+        
+        return username || 'Unknown User';
+    }
+    
+    formatMessageContent(content, guild) {
+        if (!content) return '';
+        
+        let formatted = content;
+        
+        // Replace user mentions
+        formatted = formatted.replace(/<@!?(\d+)>/g, (match, userId) => {
+            const user = this.client.users.cache.get(userId);
+            if (user) {
+                return `@${this.formatUserName(user)}`;
+            }
+            return match;
+        });
+        
+        // Replace role mentions
+        if (guild) {
+            formatted = formatted.replace(/<@&(\d+)>/g, (match, roleId) => {
+                const role = guild.roles.cache.get(roleId);
+                if (role) {
+                    return `@${role.name}`;
+                }
+                return match;
+            });
+        }
+        
+        // Replace channel mentions
+        formatted = formatted.replace(/<#(\d+)>/g, (match, channelId) => {
+            const channel = this.client.channels.cache.get(channelId);
+            if (channel) {
+                return `#${channel.name}`;
+            }
+            return match;
+        });
+        
+        // Truncate if too long
+        return formatted.length > 300 ? formatted.substring(0, 300) + '...' : formatted;
+    }
+    
+    logMessage(message) {
+        if (!this.messageLogger.enabled) return;
+        
+        const logEntry = {
+            id: message.id,
+            content: message.content,
+            formattedContent: this.formatMessageContent(message.content, message.guild),
+            author: {
+                id: message.author.id,
+                name: this.formatUserName(message.author),
+                username: message.author.username,
+                displayName: message.author.displayName || message.author.globalName,
+                avatar: message.author.displayAvatarURL()
+            },
+            channel: {
+                id: message.channel.id,
+                name: message.channel.name || 'DM',
+                type: message.channel.type
+            },
+            guild: message.guild ? {
+                id: message.guild.id,
+                name: message.guild.name
+            } : null,
+            timestamp: message.createdTimestamp,
+            attachments: message.attachments.map(att => ({
+                id: att.id,
+                name: att.name,
+                url: att.url,
+                size: att.size
+            })),
+            embeds: message.embeds.length > 0,
+            mentions: {
+                users: message.mentions.users.map(user => ({
+                    id: user.id,
+                    name: this.formatUserName(user)
+                })),
+                roles: message.mentions.roles.map(role => ({
+                    id: role.id,
+                    name: role.name
+                })),
+                everyone: message.mentions.everyone
+            }
+        };
+        
+        this.messageLogger.logs.unshift(logEntry);
+        
+        // Keep only the most recent logs
+        if (this.messageLogger.logs.length > this.messageLogger.maxLogs) {
+            this.messageLogger.logs = this.messageLogger.logs.slice(0, this.messageLogger.maxLogs);
+        }
+    }
+    
+    logGhostPing(message, type = 'deleted') {
+        if (!this.antiGhostPing.enabled) return;
+        
+        const ghostPingEntry = {
+            id: Date.now().toString(),
+            messageId: message.id,
+            type: type, // 'deleted' or 'edited'
+            content: message.content,
+            formattedContent: this.formatMessageContent(message.content, message.guild),
+            author: {
+                id: message.author.id,
+                name: this.formatUserName(message.author),
+                avatar: message.author.displayAvatarURL()
+            },
+            channel: {
+                id: message.channel.id,
+                name: message.channel.name || 'DM'
+            },
+            guild: message.guild ? {
+                id: message.guild.id,
+                name: message.guild.name
+            } : null,
+            timestamp: Date.now(),
+            originalTimestamp: message.createdTimestamp
+        };
+        
+        this.antiGhostPing.logs.unshift(ghostPingEntry);
+        
+        // Keep only recent ghost pings
+        if (this.antiGhostPing.logs.length > 100) {
+            this.antiGhostPing.logs = this.antiGhostPing.logs.slice(0, 100);
+        }
+        
+        // Send notification
+        this.sendNotification({
+            type: 'warning',
+            title: 'Ghost Ping Detected!',
+            content: `${this.formatUserName(message.author)} ${type} a message that mentioned you`,
+            author: this.formatUserName(message.author),
+            channel: message.channel.name || 'DM',
+            guild: message.guild?.name || 'Direct Message',
+            timestamp: Date.now()
+        });
+    }
+    
+    getMessageLogs() {
+        return {
+            logs: this.messageLogger.logs,
+            enabled: this.messageLogger.enabled,
+            maxLogs: this.messageLogger.maxLogs
+        };
+    }
+    
+    clearMessageLogs() {
+        this.messageLogger.logs = [];
+        return { success: true };
+    }
+    
+    getGhostPingLogs() {
+        return {
+            logs: this.antiGhostPing.logs,
+            enabled: this.antiGhostPing.enabled
+        };
+    }
+    
+    clearGhostPingLogs() {
+        this.antiGhostPing.logs = [];
+        return { success: true };
+    }
+    
+    getServerChannels(serverId) {
+        const guild = this.client.guilds.cache.get(serverId);
+        if (!guild) return { success: false, error: 'Server not found' };
+        
+        const channels = guild.channels.cache
+            .filter(channel => channel.type === 0 || channel.type === 2) // Text and Voice channels
+            .map(channel => ({
+                id: channel.id,
+                name: channel.name,
+                type: channel.type === 0 ? 'text' : 'voice',
+                position: channel.position,
+                parentId: channel.parentId,
+                nsfw: channel.nsfw || false,
+                topic: channel.topic || null
+            }))
+            .sort((a, b) => a.position - b.position);
+        
+        return { success: true, channels };
+    }
+    
+    getServerMembers(serverId) {
+        const guild = this.client.guilds.cache.get(serverId);
+        if (!guild) return { success: false, error: 'Server not found' };
+        
+        const members = guild.members.cache.map(member => ({
+            id: member.id,
+            user: {
+                id: member.user.id,
+                username: member.user.username,
+                displayName: member.user.displayName || member.user.globalName,
+                discriminator: member.user.discriminator,
+                avatar: member.user.displayAvatarURL(),
+                bot: member.user.bot
+            },
+            nickname: member.nickname,
+            displayName: this.formatUserName(member.user),
+            joinedAt: member.joinedAt,
+            roles: member.roles.cache.map(role => ({
+                id: role.id,
+                name: role.name,
+                color: role.hexColor
+            })),
+            permissions: member.permissions.toArray(),
+            presence: member.presence ? {
+                status: member.presence.status,
+                activities: member.presence.activities.map(activity => ({
+                    name: activity.name,
+                    type: activity.type
+                }))
+            } : null
+        }));
+        
+        return { success: true, members };
+    }
+    
+    async kickMember(serverId, memberId, reason = 'No reason provided') {
+        try {
+            const guild = this.client.guilds.cache.get(serverId);
+            if (!guild) return { success: false, error: 'Server not found' };
+            
+            const member = guild.members.cache.get(memberId);
+            if (!member) return { success: false, error: 'Member not found' };
+            
+            await member.kick(reason);
+            return { success: true };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+    
+    async banMember(serverId, memberId, reason = 'No reason provided') {
+        try {
+            const guild = this.client.guilds.cache.get(serverId);
+            if (!guild) return { success: false, error: 'Server not found' };
+            
+            await guild.members.ban(memberId, { reason });
+            return { success: true };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+    
+    getMessageTemplates() {
+        return this.messageTemplates;
+    }
+    
+    saveMessageTemplate(template) {
+        try {
+            const newTemplate = {
+                ...template,
+                id: Date.now().toString(),
+                createdAt: new Date().toISOString()
+            };
+            
+            this.messageTemplates.push(newTemplate);
+            this.saveMessageTemplates();
+            
+            return { success: true, template: newTemplate };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+    
+    deleteMessageTemplate(templateId) {
+        try {
+            const index = this.messageTemplates.findIndex(t => t.id === templateId);
+            if (index === -1) return { success: false, error: 'Template not found' };
+            
+            this.messageTemplates.splice(index, 1);
+            this.saveMessageTemplates();
+            
+            return { success: true };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+    
+    loadMessageTemplates() {
+        try {
+            const templatesPath = path.join(require('electron').app.getPath('userData'), 'message-templates.json');
+            if (fs.existsSync(templatesPath)) {
+                return JSON.parse(fs.readFileSync(templatesPath, 'utf8'));
+            }
+        } catch (error) {
+            console.error('Error loading message templates:', error);
+        }
+        return [];
+    }
+    
+    saveMessageTemplates() {
+        try {
+            const templatesPath = path.join(require('electron').app.getPath('userData'), 'message-templates.json');
+            fs.writeFileSync(templatesPath, JSON.stringify(this.messageTemplates, null, 2));
+        } catch (error) {
+            console.error('Error saving message templates:', error);
+        }
+    }
+    
+    getBackups() {
+        try {
+            const backupPath = path.join(require('electron').app.getPath('userData'), 'backups');
+            if (!fs.existsSync(backupPath)) return [];
+            
+            const backupFiles = fs.readdirSync(backupPath)
+                .filter(file => file.endsWith('.json'))
+                .map(file => {
+                    try {
+                        const backupData = JSON.parse(fs.readFileSync(path.join(backupPath, file), 'utf8'));
+                        return {
+                            id: backupData.id,
+                            serverName: backupData.serverName,
+                            createdAt: backupData.createdAt,
+                            size: fs.statSync(path.join(backupPath, file)).size
+                        };
+                    } catch (error) {
+                        return null;
+                    }
+                })
+                .filter(backup => backup !== null)
+                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            
+            return backupFiles;
+        } catch (error) {
+            console.error('Error loading backups:', error);
+            return [];
+        }
+    }
+    
+    async restoreBackup(backupId, serverId) {
+        try {
+            const backupPath = path.join(require('electron').app.getPath('userData'), 'backups', `${backupId}.json`);
+            if (!fs.existsSync(backupPath)) {
+                return { success: false, error: 'Backup not found' };
+            }
+            
+            const backupData = JSON.parse(fs.readFileSync(backupPath, 'utf8'));
+            const guild = this.client.guilds.cache.get(serverId);
+            
+            if (!guild) {
+                return { success: false, error: 'Target server not found' };
+            }
+            
+            // This is a simplified restore - in practice, you'd need proper permissions
+            // and careful handling of rate limits
+            return { success: false, error: 'Backup restore requires additional permissions and careful implementation' };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
 
     getUserData() {
         if (!this.client || !this.isReady || !this.client.user) {
@@ -390,6 +858,8 @@ class DiscordClient {
         return {
             id: user.id,
             username: user.username,
+            displayName: user.displayName || user.globalName,
+            formattedName: this.formatUserName(user),
             discriminator: user.discriminator,
             handle: user.tag,
             avatar: user.displayAvatarURL({ size: 128 }),

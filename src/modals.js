@@ -4,8 +4,9 @@ class ModalSystem {
         this.toastContainer = null;
         this.toastQueue = [];
         this.maxToasts = 5;
+        this.modalContainer = null;
         
-        // Delay initialization to ensure DOM is ready
+        // Initialize immediately if DOM is ready, otherwise wait
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => this.init());
         } else {
@@ -15,20 +16,464 @@ class ModalSystem {
 
     init() {
         if (this.toastContainer) return; // Already initialized
-        this.createToastContainer();
+        this.createContainers();
         this.setupKeyboardHandlers();
+        this.injectStyles();
     }
 
-    createToastContainer() {
-        // Remove existing container if it exists
-        const existing = document.querySelector('.toast-container');
-        if (existing) {
-            existing.remove();
-        }
+    createContainers() {
+        // Remove existing containers if they exist
+        const existingToast = document.querySelector('.toast-container');
+        const existingModal = document.querySelector('.modal-container');
         
+        if (existingToast) existingToast.remove();
+        if (existingModal) existingModal.remove();
+        
+        // Create toast container
         this.toastContainer = document.createElement('div');
         this.toastContainer.className = 'toast-container';
         document.body.appendChild(this.toastContainer);
+        
+        // Create modal container
+        this.modalContainer = document.createElement('div');
+        this.modalContainer.className = 'modal-container';
+        document.body.appendChild(this.modalContainer);
+    }
+
+    injectStyles() {
+        if (document.querySelector('#modal-system-styles')) return;
+        
+        const style = document.createElement('style');
+        style.id = 'modal-system-styles';
+        style.textContent = `
+            /* Modal Container */
+            .modal-container {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                pointer-events: none;
+                z-index: 10000;
+            }
+            
+            /* Modal Overlay */
+            .modal-overlay {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.7);
+                backdrop-filter: blur(8px);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                opacity: 0;
+                visibility: hidden;
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                pointer-events: auto;
+            }
+
+            .modal-overlay.show {
+                opacity: 1;
+                visibility: visible;
+            }
+
+            /* Modal */
+            .modal {
+                background: rgba(15, 23, 42, 0.98);
+                backdrop-filter: blur(20px);
+                border: 1px solid rgba(255, 255, 255, 0.15);
+                border-radius: 16px;
+                padding: 24px;
+                max-width: 500px;
+                width: 90%;
+                max-height: 80vh;
+                overflow-y: auto;
+                transform: scale(0.9) translateY(20px);
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+                position: relative;
+            }
+
+            .modal-overlay.show .modal {
+                transform: scale(1) translateY(0);
+            }
+
+            /* Modal Header */
+            .modal-header {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                margin-bottom: 20px;
+                padding-bottom: 16px;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            }
+
+            .modal-icon {
+                width: 32px;
+                height: 32px;
+                border-radius: 8px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-shrink: 0;
+            }
+
+            .modal-icon.info {
+                background: rgba(59, 130, 246, 0.2);
+                color: #3b82f6;
+            }
+
+            .modal-icon.success {
+                background: rgba(34, 197, 94, 0.2);
+                color: #22c55e;
+            }
+
+            .modal-icon.warning {
+                background: rgba(245, 158, 11, 0.2);
+                color: #f59e0b;
+            }
+
+            .modal-icon.error {
+                background: rgba(239, 68, 68, 0.2);
+                color: #ef4444;
+            }
+
+            .modal-icon.question {
+                background: rgba(124, 58, 237, 0.2);
+                color: #7c3aed;
+            }
+
+            .modal-title {
+                font-size: 18px;
+                font-weight: 600;
+                color: #ffffff;
+                flex: 1;
+                font-family: 'Inter', sans-serif;
+            }
+
+            .modal-close {
+                width: 32px;
+                height: 32px;
+                border: none;
+                background: rgba(255, 255, 255, 0.1);
+                color: rgba(255, 255, 255, 0.6);
+                border-radius: 8px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: all 0.2s ease;
+                font-size: 18px;
+            }
+
+            .modal-close:hover {
+                background: rgba(255, 255, 255, 0.2);
+                color: #ffffff;
+            }
+
+            /* Modal Content */
+            .modal-content {
+                margin-bottom: 24px;
+            }
+
+            .modal-message {
+                font-size: 15px;
+                line-height: 1.6;
+                color: rgba(255, 255, 255, 0.9);
+                margin-bottom: 16px;
+                font-family: 'Inter', sans-serif;
+            }
+
+            .modal-details {
+                font-size: 13px;
+                color: rgba(255, 255, 255, 0.7);
+                background: rgba(255, 255, 255, 0.05);
+                padding: 12px 16px;
+                border-radius: 8px;
+                border-left: 3px solid rgba(79, 70, 229, 0.5);
+                white-space: pre-wrap;
+                font-family: 'Inter', sans-serif;
+            }
+
+            /* Modal Input */
+            .modal-input, .modal-textarea {
+                width: 100%;
+                background: rgba(15, 23, 42, 0.8);
+                border: 2px solid rgba(255, 255, 255, 0.1);
+                border-radius: 8px;
+                padding: 12px 16px;
+                font-size: 14px;
+                color: #ffffff;
+                transition: all 0.3s ease;
+                font-family: 'Inter', sans-serif;
+                margin-bottom: 16px;
+            }
+
+            .modal-input {
+                height: 44px;
+            }
+
+            .modal-textarea {
+                min-height: 80px;
+                resize: vertical;
+            }
+
+            .modal-input::placeholder, .modal-textarea::placeholder {
+                color: rgba(255, 255, 255, 0.5);
+            }
+
+            .modal-input:focus, .modal-textarea:focus {
+                outline: none;
+                border-color: rgba(79, 70, 229, 0.6);
+                box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+            }
+
+            /* Modal Actions */
+            .modal-actions {
+                display: flex;
+                gap: 12px;
+                justify-content: flex-end;
+            }
+
+            .modal-btn {
+                padding: 10px 20px;
+                border: none;
+                border-radius: 8px;
+                font-size: 14px;
+                font-weight: 500;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                font-family: 'Inter', sans-serif;
+                min-width: 80px;
+                position: relative;
+                overflow: hidden;
+            }
+
+            .modal-btn-primary {
+                background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+                color: #ffffff;
+            }
+
+            .modal-btn-primary:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 8px 25px rgba(79, 70, 229, 0.4);
+            }
+
+            .modal-btn-secondary {
+                background: rgba(255, 255, 255, 0.1);
+                color: rgba(255, 255, 255, 0.9);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+            }
+
+            .modal-btn-secondary:hover {
+                background: rgba(255, 255, 255, 0.2);
+                color: #ffffff;
+            }
+
+            .modal-btn-danger {
+                background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+                color: #ffffff;
+            }
+
+            .modal-btn-danger:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4);
+            }
+
+            /* Loading Spinner */
+            .modal-spinner {
+                width: 20px;
+                height: 20px;
+                border: 2px solid rgba(255, 255, 255, 0.3);
+                border-top: 2px solid #ffffff;
+                border-radius: 50%;
+                animation: spin 1s linear infinite;
+                margin-right: 8px;
+            }
+
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+
+            /* Toast System */
+            .toast-container {
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                z-index: 10001;
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+                max-width: 400px;
+                pointer-events: none;
+            }
+
+            .toast {
+                background: rgba(15, 23, 42, 0.98);
+                backdrop-filter: blur(20px);
+                border: 1px solid rgba(255, 255, 255, 0.15);
+                border-radius: 12px;
+                padding: 16px;
+                display: flex;
+                align-items: flex-start;
+                gap: 12px;
+                transform: translateX(100%);
+                opacity: 0;
+                transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+                pointer-events: auto;
+                position: relative;
+                overflow: hidden;
+            }
+
+            .toast.show {
+                transform: translateX(0);
+                opacity: 1;
+            }
+
+            .toast.hide {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            .toast-icon {
+                width: 24px;
+                height: 24px;
+                border-radius: 6px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-shrink: 0;
+            }
+
+            .toast-icon.info {
+                background: rgba(59, 130, 246, 0.2);
+                color: #3b82f6;
+            }
+
+            .toast-icon.success {
+                background: rgba(34, 197, 94, 0.2);
+                color: #22c55e;
+            }
+
+            .toast-icon.warning {
+                background: rgba(245, 158, 11, 0.2);
+                color: #f59e0b;
+            }
+
+            .toast-icon.error {
+                background: rgba(239, 68, 68, 0.2);
+                color: #ef4444;
+            }
+
+            .toast-content {
+                flex: 1;
+            }
+
+            .toast-title {
+                font-size: 14px;
+                font-weight: 600;
+                color: #ffffff;
+                margin-bottom: 4px;
+                font-family: 'Inter', sans-serif;
+            }
+
+            .toast-message {
+                font-size: 13px;
+                color: rgba(255, 255, 255, 0.8);
+                line-height: 1.4;
+                font-family: 'Inter', sans-serif;
+            }
+
+            .toast-close {
+                width: 20px;
+                height: 20px;
+                border: none;
+                background: none;
+                color: rgba(255, 255, 255, 0.5);
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 4px;
+                transition: all 0.2s ease;
+                font-size: 16px;
+            }
+
+            .toast-close:hover {
+                background: rgba(255, 255, 255, 0.1);
+                color: rgba(255, 255, 255, 0.8);
+            }
+
+            /* Progress Bar */
+            .toast-progress {
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                height: 3px;
+                background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+                border-radius: 0 0 12px 12px;
+                transition: width linear;
+            }
+
+            .toast.info .toast-progress {
+                background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            }
+
+            .toast.success .toast-progress {
+                background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+            }
+
+            .toast.warning .toast-progress {
+                background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            }
+
+            .toast.error .toast-progress {
+                background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            }
+
+            /* Shake Animation */
+            @keyframes shake {
+                0%, 100% { transform: translateX(0); }
+                10%, 30%, 50%, 70%, 90% { transform: translateX(-3px); }
+                20%, 40%, 60%, 80% { transform: translateX(3px); }
+            }
+
+            .shake {
+                animation: shake 0.5s ease-in-out;
+            }
+
+            /* Responsive Design */
+            @media (max-width: 768px) {
+                .modal {
+                    margin: 20px;
+                    padding: 20px;
+                    max-width: none;
+                    width: calc(100% - 40px);
+                }
+                
+                .toast-container {
+                    top: 10px;
+                    right: 10px;
+                    left: 10px;
+                    max-width: none;
+                }
+                
+                .modal-actions {
+                    flex-direction: column-reverse;
+                }
+                
+                .modal-btn {
+                    width: 100%;
+                    justify-content: center;
+                }
+            }
+        `;
+        document.head.appendChild(style);
     }
 
     setupKeyboardHandlers() {
@@ -292,7 +737,7 @@ class ModalSystem {
             loadingContent.style.alignItems = 'center';
             loadingContent.innerHTML = `
                 <div class="modal-spinner"></div>
-                <span>${message}</span>
+                <span class="modal-message">${message}</span>
             `;
             content.appendChild(loadingContent);
         } else {
@@ -411,7 +856,7 @@ class ModalSystem {
 
     // Show Modal
     showModal(modal) {
-        document.body.appendChild(modal);
+        this.modalContainer.appendChild(modal);
         this.activeModals.add(modal);
         
         // Trigger animation
@@ -444,7 +889,7 @@ class ModalSystem {
     // Show Toast
     showToast(toast, duration) {
         if (!this.toastContainer) {
-            this.createToastContainer();
+            this.createContainers();
         }
         
         // Remove oldest toast if at limit
@@ -491,9 +936,9 @@ class ModalSystem {
 
     // Utility Methods
     shake(element) {
-        element.style.animation = 'shake 0.5s ease-in-out';
+        element.classList.add('shake');
         setTimeout(() => {
-            element.style.animation = '';
+            element.classList.remove('shake');
         }, 500);
     }
 
