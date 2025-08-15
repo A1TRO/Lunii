@@ -1,4 +1,5 @@
 const { Client } = require('discord.js-selfbot-v13');
+const { ActivityType } = require('discord.js-selfbot-v13');
 const { ipcMain } = require('electron');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const fs = require('fs');
@@ -40,6 +41,16 @@ class DiscordClient {
         this.antiGhostPing = {
             enabled: true,
             logs: []
+        };
+        this.giveawaySystem = {
+            enabled: false,
+            joinedToday: 0,
+            lastReset: Date.now()
+        };
+        this.statusAnimation = {
+            enabled: false,
+            currentIndex: 0,
+            interval: null
         };
         this.messageTemplates = this.loadMessageTemplates();
         
@@ -190,6 +201,21 @@ class DiscordClient {
         // Handle backup operations
         ipcMain.handle('discord-get-backups', () => {
             return this.getBackups();
+        });
+        
+        // Handle giveaway settings
+        ipcMain.handle('discord-set-giveaway-settings', (event, settings) => {
+            return this.setGiveawaySettings(settings);
+        });
+        
+        // Handle AFK settings
+        ipcMain.handle('discord-set-afk-settings', (event, settings) => {
+            return this.setAFKSettings(settings);
+        });
+        
+        // Handle status animation settings
+        ipcMain.handle('discord-set-status-animation', (event, settings) => {
+            return this.setStatusAnimationSettings(settings);
         });
         
         ipcMain.handle('discord-restore-backup', async (event, backupId, serverId) => {
@@ -1159,6 +1185,10 @@ class DiscordClient {
                     this.settings = this.settings || {};
                     this.settings.autoGiveaway = value;
                     break;
+                case 'afkAutoReply':
+                    // Handle AFK auto-reply setting
+                    return this.setAFKSettings({ enabled: value });
+                    break;
                 case 'statusAnimation':
                     this.settings = this.settings || {};
                     this.settings.statusAnimation = value;
@@ -1171,6 +1201,159 @@ class DiscordClient {
         } catch (error) {
             return { success: false, error: error.message };
         }
+    }
+    
+    setGiveawaySettings(settings) {
+        try {
+            this.giveawaySystem = {
+                ...this.giveawaySystem,
+                ...settings
+            };
+            
+            // Save to persistent storage
+            this.saveGiveawaySettings(settings);
+            
+            return { success: true };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+    
+    setAFKSettings(settings) {
+        try {
+            this.afkSettings = {
+                ...this.afkSettings,
+                ...settings
+            };
+            
+            if (settings.enabled) {
+                this.afkSettings.startTime = Date.now();
+            } else {
+                this.afkSettings.startTime = null;
+            }
+            
+            // Save to persistent storage
+            this.saveAFKSettings(settings);
+            
+            return { success: true };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+    
+    setStatusAnimationSettings(settings) {
+        try {
+            this.statusAnimation = {
+                ...this.statusAnimation,
+                ...settings
+            };
+            
+            // Stop existing animation
+            if (this.statusAnimation.interval) {
+                clearInterval(this.statusAnimation.interval);
+                this.statusAnimation.interval = null;
+            }
+            
+            // Start new animation if enabled
+            if (settings.enabled && settings.messages && settings.messages.length > 0) {
+                this.startStatusAnimation();
+            }
+            
+            // Save to persistent storage
+            this.saveStatusAnimationSettings(settings);
+            
+            return { success: true };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+    
+    startStatusAnimation() {
+        if (!this.client || !this.isReady) return;
+        
+        const updateStatus = async () => {
+            try {
+                const messages = this.statusAnimation.messages || [];
+                if (messages.length === 0) return;
+                
+                let index = this.statusAnimation.currentIndex;
+                if (this.statusAnimation.randomOrder) {
+                    index = Math.floor(Math.random() * messages.length);
+                } else {
+                    index = (index + 1) % messages.length;
+                }
+                
+                this.statusAnimation.currentIndex = index;
+                const status = messages[index];
+                
+                if (status && status.text) {
+                    const activityOptions = {
+                        name: status.text,
+                        type: this.getActivityType(status.type)
+                    };
+                    
+                    if (status.type === 'STREAMING' && status.url) {
+                        activityOptions.url = status.url;
+                    }
+                    
+                    await this.client.user.setActivity(activityOptions);
+                }
+            } catch (error) {
+                console.error('Error updating status:', error);
+            }
+        };
+        
+        // Update immediately
+        updateStatus();
+        
+        // Set interval for future updates
+        const interval = this.statusAnimation.interval || 30000;
+        this.statusAnimation.interval = setInterval(updateStatus, interval);
+    }
+    
+    getActivityType(type) {
+        switch (type?.toUpperCase()) {
+            case 'PLAYING': return ActivityType.Playing;
+            case 'STREAMING': return ActivityType.Streaming;
+            case 'LISTENING': return ActivityType.Listening;
+            case 'WATCHING': return ActivityType.Watching;
+            case 'COMPETING': return ActivityType.Competing;
+            default: return ActivityType.Playing;
+        }
+    }
+    
+    saveGiveawaySettings(settings) {
+        try {
+            const settingsPath = path.join(require('electron').app.getPath('userData'), 'giveaway-settings.json');
+            fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+        } catch (error) {
+            console.error('Error saving giveaway settings:', error);
+        }
+    }
+    
+    saveAFKSettings(settings) {
+        try {
+            const settingsPath = path.join(require('electron').app.getPath('userData'), 'afk-settings.json');
+            fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+        } catch (error) {
+            console.error('Error saving AFK settings:', error);
+        }
+    }
+    
+    saveStatusAnimationSettings(settings) {
+        try {
+            const settingsPath = path.join(require('electron').app.getPath('userData'), 'status-animation-settings.json');
+            fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+        } catch (error) {
+            console.error('Error saving status animation settings:', error);
+        }
+    }
+    
+    loadSettings() {
+        // Load saved settings on startup
+        this.loadGiveawaySettings();
+        this.loadAFKSettings();
+        this.loadStatusAnimationSettings();
     }
 
     sendNotification(notification) {
@@ -1185,6 +1368,47 @@ class DiscordClient {
 
     incrementCommandUsage() {
         this.stats.commandsUsed++;
+    }
+    
+    loadGiveawaySettings() {
+        try {
+            const settingsPath = path.join(require('electron').app.getPath('userData'), 'giveaway-settings.json');
+            if (fs.existsSync(settingsPath)) {
+                const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+                this.giveawaySystem = { ...this.giveawaySystem, ...settings };
+            }
+        } catch (error) {
+            console.error('Error loading giveaway settings:', error);
+        }
+    }
+    
+    loadAFKSettings() {
+        try {
+            const settingsPath = path.join(require('electron').app.getPath('userData'), 'afk-settings.json');
+            if (fs.existsSync(settingsPath)) {
+                const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+                this.afkSettings = { ...this.afkSettings, ...settings };
+            }
+        } catch (error) {
+            console.error('Error loading AFK settings:', error);
+        }
+    }
+    
+    loadStatusAnimationSettings() {
+        try {
+            const settingsPath = path.join(require('electron').app.getPath('userData'), 'status-animation-settings.json');
+            if (fs.existsSync(settingsPath)) {
+                const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+                this.statusAnimation = { ...this.statusAnimation, ...settings };
+                
+                // Start animation if enabled
+                if (settings.enabled && settings.messages && settings.messages.length > 0) {
+                    setTimeout(() => this.startStatusAnimation(), 2000);
+                }
+            }
+        } catch (error) {
+            console.error('Error loading status animation settings:', error);
+        }
     }
 }
 

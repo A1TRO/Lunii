@@ -443,6 +443,7 @@
                     <h2>Automation Settings</h2>
                 </div>
                 <div class="automation-settings">
+                    <!-- Auto Giveaway Configuration -->
                     <div class="feature-card">
                         <div>
                             <h4>Auto Giveaway Join</h4>
@@ -453,10 +454,54 @@
                                 <input type="checkbox" id="auto-giveaway-feature">
                                 <label for="auto-giveaway-feature"></label>
                             </div>
-                            <button class="config-btn">Configure</button>
+                            <button class="config-btn" id="configure-giveaway-btn">Configure</button>
                         </div>
                     </div>
                     
+                    <!-- Giveaway Configuration Panel -->
+                    <div class="config-panel" id="giveaway-config-panel" style="display: none;">
+                        <h4>Giveaway Settings</h4>
+                        <div class="config-grid">
+                            <div class="input-group">
+                                <label>Keywords (comma separated)</label>
+                                <input type="text" id="giveaway-keywords" placeholder="🎉, giveaway, react, win, prize">
+                            </div>
+                            <div class="input-group">
+                                <label>Reaction Emojis (comma separated)</label>
+                                <input type="text" id="giveaway-emojis" placeholder="🎉, 🎊, 🎁, ✨">
+                            </div>
+                            <div class="input-group">
+                                <label>Min Delay (ms)</label>
+                                <input type="number" id="giveaway-min-delay" value="1000" min="500" max="10000">
+                            </div>
+                            <div class="input-group">
+                                <label>Max Delay (ms)</label>
+                                <input type="number" id="giveaway-max-delay" value="5000" min="1000" max="30000">
+                            </div>
+                            <div class="input-group">
+                                <label>Max Per Hour</label>
+                                <input type="number" id="giveaway-max-hour" value="10" min="1" max="50">
+                            </div>
+                            <div class="checkbox-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="giveaway-verified-only" checked>
+                                    <span class="checkmark"></span>
+                                    <span class="checkbox-text">Verified bots only</span>
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="giveaway-require-keywords" checked>
+                                    <span class="checkmark"></span>
+                                    <span class="checkbox-text">Require keywords</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="config-actions">
+                            <button class="action-btn secondary" id="giveaway-cancel-btn">Cancel</button>
+                            <button class="action-btn primary" id="giveaway-save-btn">Save Settings</button>
+                        </div>
+                    </div>
+                    
+                    <!-- AFK Auto Reply Configuration -->
                     <div class="feature-card">
                         <div>
                             <h4>AFK Auto-Reply</h4>
@@ -467,10 +512,46 @@
                                 <input type="checkbox" id="afk-auto-reply-feature">
                                 <label for="afk-auto-reply-feature"></label>
                             </div>
-                            <button class="config-btn">Configure</button>
+                            <button class="config-btn" id="configure-afk-btn">Configure</button>
                         </div>
                     </div>
                     
+                    <!-- AFK Configuration Panel -->
+                    <div class="config-panel" id="afk-config-panel" style="display: none;">
+                        <h4>AFK Auto-Reply Settings</h4>
+                        <div class="config-grid">
+                            <div class="input-group">
+                                <label>AFK Message</label>
+                                <textarea id="afk-message" placeholder="I'm currently AFK. I'll get back to you soon!"></textarea>
+                            </div>
+                            <div class="input-group">
+                                <label>Timeout (minutes)</label>
+                                <input type="number" id="afk-timeout" value="5" min="1" max="60">
+                            </div>
+                            <div class="input-group">
+                                <label>Response Limit</label>
+                                <input type="number" id="afk-response-limit" value="3" min="1" max="10">
+                            </div>
+                            <div class="checkbox-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="afk-auto-detection" checked>
+                                    <span class="checkmark"></span>
+                                    <span class="checkbox-text">Auto detection</span>
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="afk-ai-enabled">
+                                    <span class="checkmark"></span>
+                                    <span class="checkbox-text">AI-powered responses</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="config-actions">
+                            <button class="action-btn secondary" id="afk-cancel-btn">Cancel</button>
+                            <button class="action-btn primary" id="afk-save-btn">Save Settings</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Status Animation Configuration -->
                     <div class="feature-card">
                         <div>
                             <h4>Status Animation</h4>
@@ -481,7 +562,36 @@
                                 <input type="checkbox" id="status-animation-feature">
                                 <label for="status-animation-feature"></label>
                             </div>
-                            <button class="config-btn">Configure</button>
+                            <button class="config-btn" id="configure-status-btn">Configure</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Status Animation Configuration Panel -->
+                    <div class="config-panel" id="status-config-panel" style="display: none;">
+                        <h4>Status Animation Settings</h4>
+                        <div class="config-grid">
+                            <div class="input-group">
+                                <label>Interval (seconds)</label>
+                                <input type="number" id="status-interval" value="30" min="10" max="300">
+                            </div>
+                            <div class="checkbox-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="status-random-order">
+                                    <span class="checkmark"></span>
+                                    <span class="checkbox-text">Random order</span>
+                                </label>
+                            </div>
+                            <div class="status-messages-section">
+                                <label>Status Messages</label>
+                                <div class="status-messages-list" id="status-messages-list">
+                                    <!-- Status messages will be populated here -->
+                                </div>
+                                <button class="action-btn secondary" id="add-status-message-btn">Add Status Message</button>
+                            </div>
+                        </div>
+                        <div class="config-actions">
+                            <button class="action-btn secondary" id="status-cancel-btn">Cancel</button>
+                            <button class="action-btn primary" id="status-save-btn">Save Settings</button>
                         </div>
                     </div>
                 </div>
