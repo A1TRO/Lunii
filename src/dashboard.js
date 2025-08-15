@@ -123,6 +123,14 @@ class DashboardManager {
         document.getElementById('test-gemini-connection').addEventListener('click', () => {
             this.testGeminiConnection();
         });
+        
+        document.getElementById('view-ai-stats-btn').addEventListener('click', () => {
+            this.viewAIStats();
+        });
+        
+        document.getElementById('clear-ai-history-btn').addEventListener('click', () => {
+            this.clearAIHistory();
+        });
     }
 
     async loadUserData() {
