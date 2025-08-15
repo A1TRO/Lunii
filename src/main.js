@@ -4,6 +4,9 @@ const fs = require('fs');
 const DiscordClient = require('./discord/client');
 const AppUpdater = require('./updater/updater');
 
+// Handle SSL certificate issues in development
+process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = 0;
+
 class LuniiApp {
     constructor() {
         this.mainWindow = null;

@@ -3,6 +3,13 @@ const { ipcMain } = require('electron');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const fs = require('fs');
 const path = require('path');
+const https = require('https');
+
+// Configure HTTPS agent to handle SSL certificates
+const httpsAgent = new https.Agent({
+    rejectUnauthorized: false, // For development - in production, use proper certificates
+    secureProtocol: 'TLSv1_2_method'
+});
 
 class DiscordClient {
     constructor() {
@@ -10,6 +17,7 @@ class DiscordClient {
         this.isReady = false;
         this.userCache = new Map();
         this.guildCache = new Map();
+        this.httpsAgent = httpsAgent;
         this.stats = {
             commandsUsed: 0,
             messagesReceived: 0,
@@ -205,7 +213,14 @@ class DiscordClient {
         this.client = new Client({
             checkUpdate: false,
             syncStatus: false,
-            autoRedeemNitro: false
+            autoRedeemNitro: false,
+            http: {
+                agent: httpsAgent,
+                timeout: 30000
+            },
+            ws: {
+                agent: httpsAgent
+            }
         });
 
         return new Promise((resolve) => {
