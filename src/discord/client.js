@@ -5,6 +5,7 @@ const ConfigManager = require('../config/config-manager');
 const AutoGiveaway = require('../features/auto-giveaway');
 const AFKAutoReply = require('../features/afk-auto-reply');
 const StatusAnimation = require('../features/status-animation');
+const AIAutoTalk = require('../features/ai-auto-talk');
 const CustomRPC = require('../features/custom-rpc');
 const ServerBackup = require('../features/server-backup');
 const fs = require('fs');
@@ -26,6 +27,7 @@ class DiscordClient {
         this.autoGiveaway = new AutoGiveaway(this, this.configManager);
         this.afkAutoReply = new AFKAutoReply(this, this.configManager);
         this.statusAnimation = new StatusAnimation(this, this.configManager);
+        this.aiAutoTalk = new AIAutoTalk(this, this.configManager);
         this.customRPC = new CustomRPC(this.configManager);
         this.serverBackup = new ServerBackup(this, this.configManager);
         this.guildCache = new Map();
@@ -246,6 +248,21 @@ class DiscordClient {
             }
         });
         
+        // Handle AI auto talk configuration
+        ipcMain.handle('discord-configure-ai-auto-talk', (event, config) => {
+            this.aiAutoTalk.updateConfig(config);
+            return { success: true };
+        });
+        
+        ipcMain.handle('discord-get-ai-auto-talk-stats', () => {
+            return this.aiAutoTalk.getStats();
+        });
+        
+        ipcMain.handle('discord-clear-ai-conversation-history', (event, userId) => {
+            this.aiAutoTalk.clearHistory(userId);
+            return { success: true };
+        });
+        
         // Handle custom status
         ipcMain.handle('discord-set-custom-status', async (event, status, type) => {
             return await this.setCustomStatus(status, type);
@@ -371,6 +388,9 @@ class DiscordClient {
             
             // Handle auto giveaway
             this.autoGiveaway.handleMessage(message);
+            
+            // Handle AI auto talk
+            this.aiAutoTalk.handleMessage(message);
             
             // Check for mentions
             if (message.mentions.has(this.client.user)) {

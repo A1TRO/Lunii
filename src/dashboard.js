@@ -82,6 +82,10 @@ class DashboardManager {
         document.getElementById('status-animation-feature').addEventListener('change', (e) => {
             this.updateFeatureSetting('statusAnimation.enabled', e.target.checked);
         });
+        
+        document.getElementById('ai-auto-talk-feature').addEventListener('change', (e) => {
+            this.updateFeatureSetting('aiAutoTalk.enabled', e.target.checked);
+        });
 
         // Configuration buttons
         document.querySelectorAll('.config-btn').forEach(btn => {
@@ -156,6 +160,9 @@ class DashboardManager {
         }
         if (config.statusAnimation) {
             document.getElementById('status-animation-feature').checked = config.statusAnimation.enabled;
+        }
+        if (config.aiAutoTalk) {
+            document.getElementById('ai-auto-talk-feature').checked = config.aiAutoTalk.enabled;
         }
     }
 
@@ -363,6 +370,7 @@ class DashboardManager {
         if (title.includes('Giveaway')) return 'autoGiveaway';
         if (title.includes('AFK')) return 'afkAutoReply';
         if (title.includes('Status')) return 'statusAnimation';
+        if (title.includes('AI Talk')) return 'aiAutoTalk';
         if (title.includes('RPC')) return 'customRPC';
         return null;
     }
@@ -382,6 +390,9 @@ class DashboardManager {
                     break;
                 case 'statusAnimation':
                     this.showStatusAnimationConfig(config);
+                    break;
+                case 'aiAutoTalk':
+                    this.showAIAutoTalkConfig(config);
                     break;
                 case 'customRPC':
                     this.showCustomRPCConfig(config);

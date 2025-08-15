@@ -54,6 +54,25 @@ class ConfigManager {
                 onlyDMs: false,
                 cooldown: 300000 // 5 minutes
             },
+            aiAutoTalk: {
+                enabled: false,
+                dmMode: true,
+                afkMode: true,
+                respondToMentions: false,
+                respondToBots: false,
+                personality: 'friendly and helpful',
+                responseStyle: 'casual',
+                maxResponseLength: 500,
+                allowMarkdown: true,
+                responseDelay: { min: 1000, max: 3000 },
+                fallbackResponses: [
+                    "I'm having trouble thinking of a response right now.",
+                    "Sorry, I'm a bit confused at the moment.",
+                    "Let me think about that...",
+                    "I'm not sure how to respond to that.",
+                    "Could you rephrase that?"
+                ]
+            },
             statusAnimation: {
                 enabled: false,
                 interval: 10000, // 10 seconds
