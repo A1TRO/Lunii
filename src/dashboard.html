@@ -757,6 +757,8 @@
             getDiscordUserData: () => ipcRenderer.invoke('discord-get-user-data'),
             getDiscordStats: () => ipcRenderer.invoke('discord-get-stats'),
             updateDiscordSetting: (setting, value) => ipcRenderer.invoke('discord-update-setting', setting, value),
+            getDiscordConfig: (key) => ipcRenderer.invoke('discord-get-config', key),
+            setDiscordConfig: (key, value) => ipcRenderer.invoke('discord-set-config', key, value),
             getFriends: () => ipcRenderer.invoke('discord-get-friends'),
             getServers: () => ipcRenderer.invoke('discord-get-servers'),
             getServerDetails: (serverId) => ipcRenderer.invoke('discord-get-server-details', serverId),
