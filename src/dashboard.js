@@ -123,14 +123,6 @@ class DashboardManager {
         document.getElementById('test-gemini-connection').addEventListener('click', () => {
             this.testGeminiConnection();
         });
-        
-        document.getElementById('view-ai-stats-btn').addEventListener('click', () => {
-            this.viewAIStats();
-        });
-        
-        document.getElementById('clear-ai-history-btn').addEventListener('click', () => {
-            this.clearAIHistory();
-        });
     }
 
     async loadUserData() {
@@ -480,6 +472,29 @@ class DashboardManager {
         });
     }
 
+    showAIAutoTalkConfig(config) {
+        const modal = Modal.prompt({
+            title: 'AI Auto Talk Configuration',
+            message: 'Configure AI auto talk settings',
+            multiline: true,
+            defaultValue: JSON.stringify(config, null, 2),
+            confirmText: 'Save',
+            cancelText: 'Cancel'
+        });
+
+        modal.then(result => {
+            if (result) {
+                try {
+                    const newConfig = JSON.parse(result);
+                    window.electronAPI.invoke('discord-configure-ai-auto-talk', newConfig);
+                    this.showToast('AI Auto Talk config saved', 'success');
+                } catch (error) {
+                    this.showToast('Invalid JSON configuration', 'error');
+                }
+            }
+        });
+    }
+
     showCustomRPCConfig(config) {
         const modal = Modal.prompt({
             title: 'Custom RPC Configuration',
@@ -645,6 +660,43 @@ class DashboardManager {
             }
         } catch (error) {
             this.showToast('Error testing connection: ' + error.message, 'error');
+        }
+    }
+
+    async viewAIStats() {
+        try {
+            const stats = await window.electronAPI.invoke('discord-get-ai-auto-talk-stats');
+            const message = `AI Auto Talk Statistics:
+
+Active Conversations: ${stats.activeConversations}
+Total Responses Generated: ${stats.totalResponses}
+Rate Limited Users: ${stats.rateLimitedUsers}`;
+
+            Modal.alert({
+                title: 'AI Auto Talk Statistics',
+                message: message,
+                type: 'info'
+            });
+        } catch (error) {
+            this.showToast('Error loading AI stats: ' + error.message, 'error');
+        }
+    }
+
+    async clearAIHistory() {
+        const confirmed = await Modal.confirm({
+            title: 'Clear AI Conversation History',
+            message: 'Are you sure you want to clear all AI conversation history?',
+            details: 'This will remove all stored conversation context for AI responses.',
+            danger: true
+        });
+
+        if (confirmed) {
+            try {
+                await window.electronAPI.invoke('discord-clear-ai-conversation-history');
+                this.showToast('AI conversation history cleared', 'success');
+            } catch (error) {
+                this.showToast('Error clearing AI history: ' + error.message, 'error');
+            }
         }
     }
 
