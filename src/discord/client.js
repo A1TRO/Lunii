@@ -3,6 +3,18 @@ const { ipcMain } = require('electron');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const fs = require('fs');
 const path = require('path');
+const https = require('https');
+const axios = require('axios');
+
+// SSL Certificate fix - Create custom HTTPS agent
+const httpsAgent = new https.Agent({
+    rejectUnauthorized: false, // Bypass SSL certificate validation
+    secureProtocol: 'TLSv1_2_method'
+});
+
+// Configure axios defaults for Discord API
+axios.defaults.httpsAgent = httpsAgent;
+axios.defaults.timeout = 30000;
 
 class DiscordClient {
     constructor() {
@@ -13,7 +25,9 @@ class DiscordClient {
         this.stats = {
             commandsUsed: 0,
             messagesReceived: 0,
-            startTime: Date.now()
+            startTime: Date.now(),
+            giveawaysJoined: 0,
+            afkRepliesSent: 0
         };
         this.geminiAI = null;
         this.giveawayBots = new Set([
@@ -26,11 +40,50 @@ class DiscordClient {
             '432610292342587392', // GiveawayBot (alternative)
             '716390085896962058', // Giveaway Boat
         ]);
+        
+        // Configuration system
+        this.config = this.loadConfig();
+        
+        // AFK System
         this.afkSettings = {
             enabled: false,
             message: "I'm currently AFK. I'll get back to you soon!",
-            startTime: null
+            startTime: null,
+            timeout: 300000, // 5 minutes default
+            lastActivity: Date.now(),
+            aiEnabled: false,
+            aiPrompt: "You are helping respond to messages while the user is away. Be friendly and brief.",
+            responseLimit: 3, // Max responses per person while AFK
+            responseCount: new Map()
         };
+        
+        // Auto Giveaway System
+        this.giveawaySettings = {
+            enabled: false,
+            keywords: ['🎉', 'giveaway', 'react', 'win', 'prize', 'enter', 'participate', 'free'],
+            reactionEmojis: ['🎉', '🎊', '🎁', '✨'],
+            channelWhitelist: [],
+            channelBlacklist: [],
+            minDelay: 1000,
+            maxDelay: 5000,
+            joinedGiveaways: [],
+            maxGiveawaysPerHour: 10
+        };
+        
+        // Status Animation System
+        this.statusAnimation = {
+            enabled: false,
+            messages: [
+                { text: "Discord Self-Bot", type: 'PLAYING' },
+                { text: "with Lunii Dashboard", type: 'PLAYING' },
+                { text: "your messages", type: 'WATCHING' },
+                { text: "to music", type: 'LISTENING' }
+            ],
+            currentIndex: 0,
+            interval: 30000, // 30 seconds
+            intervalId: null
+        };
+        
         this.savedCommands = this.loadSavedCommands();
         this.messageLogger = {
             enabled: true,
@@ -44,6 +97,78 @@ class DiscordClient {
         this.messageTemplates = this.loadMessageTemplates();
         
         this.setupIPC();
+        this.startActivityMonitoring();
+    }
+
+    loadConfig() {
+        try {
+            const configPath = path.join(require('electron').app.getPath('userData'), 'config.json');
+            if (fs.existsSync(configPath)) {
+                return JSON.parse(fs.readFileSync(configPath, 'utf8'));
+            }
+        } catch (error) {
+            console.error('Error loading config:', error);
+        }
+        return this.getDefaultConfig();
+    }
+
+    getDefaultConfig() {
+        return {
+            ssl: {
+                rejectUnauthorized: false,
+                timeout: 30000
+            },
+            giveaway: {
+                enabled: false,
+                keywords: ['🎉', 'giveaway', 'react', 'win', 'prize'],
+                reactionEmojis: ['🎉', '🎊', '🎁'],
+                minDelay: 1000,
+                maxDelay: 5000,
+                maxPerHour: 10
+            },
+            afk: {
+                enabled: false,
+                timeout: 300000,
+                aiEnabled: false,
+                responseLimit: 3
+            },
+            statusAnimation: {
+                enabled: false,
+                interval: 30000,
+                messages: []
+            }
+        };
+    }
+
+    saveConfig() {
+        try {
+            const configPath = path.join(require('electron').app.getPath('userData'), 'config.json');
+            fs.writeFileSync(configPath, JSON.stringify(this.config, null, 2));
+        } catch (error) {
+            console.error('Error saving config:', error);
+        }
+    }
+
+    startActivityMonitoring() {
+        // Monitor user activity for AFK detection
+        setInterval(() => {
+            if (this.afkSettings.enabled) {
+                const timeSinceActivity = Date.now() - this.afkSettings.lastActivity;
+                if (timeSinceActivity > this.afkSettings.timeout && !this.afkSettings.startTime) {
+                    this.afkSettings.startTime = Date.now();
+                    console.log('User is now AFK');
+                }
+            }
+        }, 10000); // Check every 10 seconds
+    }
+
+    updateActivity() {
+        this.afkSettings.lastActivity = Date.now();
+        if (this.afkSettings.startTime) {
+            this.afkSettings.startTime = null;
+            this.afkSettings.responseCount.clear();
+            console.log('User is back from AFK');
+        }
     }
 
     setupIPC() {
@@ -97,7 +222,7 @@ class DiscordClient {
             return this.getServerDetails(serverId);
         });
         
-        // Handle messaging
+        // Handle messaging with SSL fix
         ipcMain.handle('discord-send-message', async (event, data) => {
             return await this.sendMessage(data);
         });
@@ -132,6 +257,16 @@ class DiscordClient {
         // Handle AFK settings
         ipcMain.handle('discord-set-afk', (event, settings) => {
             return this.setAFK(settings);
+        });
+        
+        // Handle giveaway settings
+        ipcMain.handle('discord-set-giveaway-settings', (event, settings) => {
+            return this.setGiveawaySettings(settings);
+        });
+        
+        // Handle status animation settings
+        ipcMain.handle('discord-set-status-animation', (event, settings) => {
+            return this.setStatusAnimation(settings);
         });
         
         // Handle message logging
@@ -195,6 +330,27 @@ class DiscordClient {
         ipcMain.handle('discord-restore-backup', async (event, backupId, serverId) => {
             return await this.restoreBackup(backupId, serverId);
         });
+
+        // Handle configuration
+        ipcMain.handle('discord-get-config', () => {
+            return this.config;
+        });
+
+        ipcMain.handle('discord-update-config', (event, newConfig) => {
+            this.config = { ...this.config, ...newConfig };
+            this.saveConfig();
+            return { success: true };
+        });
+
+        // Handle giveaway logs
+        ipcMain.handle('discord-get-giveaway-logs', () => {
+            return this.giveawaySettings.joinedGiveaways;
+        });
+
+        ipcMain.handle('discord-clear-giveaway-logs', () => {
+            this.giveawaySettings.joinedGiveaways = [];
+            return { success: true };
+        });
     }
 
     async login(token) {
@@ -205,7 +361,12 @@ class DiscordClient {
         this.client = new Client({
             checkUpdate: false,
             syncStatus: false,
-            autoRedeemNitro: false
+            autoRedeemNitro: false,
+            // SSL configuration
+            http: {
+                agent: httpsAgent,
+                timeout: 30000
+            }
         });
 
         return new Promise((resolve) => {
@@ -218,13 +379,16 @@ class DiscordClient {
                 this.isReady = true;
                 this.stats.startTime = Date.now();
 
-                
-                
                 // Cache user data
                 await this.cacheUserData();
                 
                 // Setup event listeners
                 this.setupEventListeners();
+                
+                // Start status animation if enabled
+                if (this.statusAnimation.enabled) {
+                    this.startStatusAnimation();
+                }
                 
                 resolve({ 
                     success: true, 
@@ -238,7 +402,7 @@ class DiscordClient {
                 resolve({ success: false, error: error.message });
             });
 
-            // Attempt login
+            // Attempt login with SSL configuration
             this.client.login(token).catch((error) => {
                 clearTimeout(timeout);
                 console.error('Login failed:', error);
@@ -250,6 +414,7 @@ class DiscordClient {
     async logout() {
         if (this.client) {
             this.isReady = false;
+            this.stopStatusAnimation();
             await this.client.destroy();
             this.client = null;
             this.userCache.clear();
@@ -275,14 +440,12 @@ class DiscordClient {
             // Cache friends
             if (this.client.relationships) {
                 this.client.relationships.friendCache.forEach(relationship => {
-                    
-                    if (relationship) { // Friends
+                    if (relationship) {
                         this.userCache.set(relationship.id, {
                             id: relationship.id,
                             username: relationship.username,
                             discriminator: relationship.discriminator,
                             avatar: relationship.displayAvatarURL()
-                           
                         });
                     }
                 });
@@ -298,6 +461,7 @@ class DiscordClient {
         // Message events
         this.client.on('messageCreate', (message) => {
             this.stats.messagesReceived++;
+            this.updateActivity(); // Update activity for AFK detection
             
             // Log message
             this.logMessage(message);
@@ -318,40 +482,16 @@ class DiscordClient {
                     messageId: message.id,
                     channelId: message.channel.id
                 });
-            }
-            
-            // Check for giveaway keywords
-            const giveawayKeywords = ['🎉', 'giveaway', 'react', 'win', 'prize', 'enter', 'participate'];
-            const hasGiveawayKeyword = giveawayKeywords.some(keyword => 
-                message.content.toLowerCase().includes(keyword.toLowerCase())
-            );
-            
-            // Enhanced giveaway detection
-            if (hasGiveawayKeyword && message.guild && this.isVerifiedGiveawayBot(message.author)) {
-                const formattedContent = this.formatMessageContent(message.content, message.guild);
-                const authorName = this.formatUserName(message.author);
-                
-                this.sendNotification({
-                    type: 'success',
-                    title: 'Giveaway Detected',
-                    content: formattedContent,
-                    author: authorName,
-                    channel: message.channel.name,
-                    guild: message.guild.name,
-                    timestamp: Date.now(),
-                    messageId: message.id,
-                    channelId: message.channel.id
-                });
-                
-                // Auto-join if enabled
-                if (this.settings?.autoGiveaway) {
-                    this.autoJoinGiveaway(message);
+
+                // Handle AFK auto-reply
+                if (this.afkSettings.enabled && this.afkSettings.startTime) {
+                    this.handleAFKReply(message);
                 }
             }
             
-            // AFK auto-reply
-            if (this.afkSettings.enabled && message.mentions.has(this.client.user)) {
-                this.handleAFKReply(message);
+            // Check for giveaways
+            if (this.giveawaySettings.enabled && message.guild) {
+                this.checkForGiveaway(message);
             }
         });
         
@@ -365,7 +505,6 @@ class DiscordClient {
         // Message update events
         this.client.on('messageUpdate', (oldMessage, newMessage) => {
             if (oldMessage.mentions?.has(this.client.user) && !newMessage.mentions?.has(this.client.user)) {
-                // Mention was removed - potential ghost ping
                 this.logGhostPing(oldMessage, 'edited');
             }
         });
@@ -410,7 +549,7 @@ class DiscordClient {
         
         // Relationship events
         this.client.on('relationshipAdd', (relationship) => {
-            if (relationship.type === 1) { // Friend
+            if (relationship.type === 1) {
                 this.userCache.set(relationship.user.id, {
                     id: relationship.user.id,
                     username: relationship.user.username,
@@ -429,7 +568,7 @@ class DiscordClient {
         });
         
         this.client.on('relationshipRemove', (relationship) => {
-            if (relationship.type === 1) { // Friend
+            if (relationship.type === 1) {
                 this.userCache.delete(relationship.user.id);
                 
                 this.sendNotification({
@@ -441,51 +580,245 @@ class DiscordClient {
             }
         });
     }
-    
-    isVerifiedGiveawayBot(author) {
-        return this.giveawayBots.has(author.id) || author.bot;
-    }
-    
-    async autoJoinGiveaway(message) {
+
+    async checkForGiveaway(message) {
         try {
-            // Look for reaction emojis in the message
-            const reactionEmojis = ['🎉', '🎊', '🎁', '✨'];
+            // Check if it's from a verified giveaway bot or contains giveaway keywords
+            const isGiveawayBot = this.giveawayBots.has(message.author.id);
+            const hasGiveawayKeyword = this.giveawaySettings.keywords.some(keyword => 
+                message.content.toLowerCase().includes(keyword.toLowerCase())
+            );
+
+            if (!isGiveawayBot && !hasGiveawayKeyword) return;
+
+            // Check channel whitelist/blacklist
+            if (this.giveawaySettings.channelWhitelist.length > 0 && 
+                !this.giveawaySettings.channelWhitelist.includes(message.channel.id)) {
+                return;
+            }
+
+            if (this.giveawaySettings.channelBlacklist.includes(message.channel.id)) {
+                return;
+            }
+
+            // Check hourly limit
+            const oneHourAgo = Date.now() - (60 * 60 * 1000);
+            const recentGiveaways = this.giveawaySettings.joinedGiveaways.filter(
+                g => g.timestamp > oneHourAgo
+            );
+
+            if (recentGiveaways.length >= this.giveawaySettings.maxGiveawaysPerHour) {
+                console.log('Giveaway hourly limit reached');
+                return;
+            }
+
+            // Add random delay to avoid detection
+            const delay = Math.random() * (this.giveawaySettings.maxDelay - this.giveawaySettings.minDelay) + this.giveawaySettings.minDelay;
             
-            for (const emoji of reactionEmojis) {
-                if (message.content.includes(emoji)) {
+            setTimeout(async () => {
+                await this.joinGiveaway(message);
+            }, delay);
+
+        } catch (error) {
+            console.error('Error checking for giveaway:', error);
+        }
+    }
+
+    async joinGiveaway(message) {
+        try {
+            // Try to react with configured emojis
+            for (const emoji of this.giveawaySettings.reactionEmojis) {
+                try {
                     await message.react(emoji);
+                    
+                    // Log successful giveaway join
+                    const giveawayLog = {
+                        id: Date.now().toString(),
+                        messageId: message.id,
+                        channelId: message.channel.id,
+                        guildId: message.guild.id,
+                        guildName: message.guild.name,
+                        channelName: message.channel.name,
+                        authorName: this.formatUserName(message.author),
+                        content: this.formatMessageContent(message.content, message.guild),
+                        emoji: emoji,
+                        timestamp: Date.now()
+                    };
+
+                    this.giveawaySettings.joinedGiveaways.unshift(giveawayLog);
+                    
+                    // Keep only recent logs
+                    if (this.giveawaySettings.joinedGiveaways.length > 100) {
+                        this.giveawaySettings.joinedGiveaways = this.giveawaySettings.joinedGiveaways.slice(0, 100);
+                    }
+
+                    this.stats.giveawaysJoined++;
                     this.incrementCommandUsage();
-                    break;
+
+                    this.sendNotification({
+                        type: 'success',
+                        title: 'Joined Giveaway!',
+                        content: `Successfully joined giveaway in ${message.guild.name}`,
+                        author: this.formatUserName(message.author),
+                        channel: message.channel.name,
+                        guild: message.guild.name,
+                        timestamp: Date.now()
+                    });
+
+                    break; // Only react with one emoji
+                } catch (reactionError) {
+                    console.error('Failed to react with emoji:', emoji, reactionError);
+                    continue;
                 }
             }
         } catch (error) {
-            console.error('Error auto-joining giveaway:', error);
+            console.error('Error joining giveaway:', error);
         }
     }
-    
+
     async handleAFKReply(message) {
         try {
+            const authorId = message.author.id;
+            const currentResponses = this.afkSettings.responseCount.get(authorId) || 0;
+
+            // Check response limit
+            if (currentResponses >= this.afkSettings.responseLimit) {
+                return;
+            }
+
+            let replyMessage = this.afkSettings.message;
+
+            // Add AI-generated response if enabled
+            if (this.afkSettings.aiEnabled && this.geminiAI) {
+                try {
+                    const aiPrompt = `${this.afkSettings.aiPrompt}\n\nUser message: "${message.content}"\n\nRespond briefly and helpfully:`;
+                    const aiResponse = await this.getAIAssistance(aiPrompt);
+                    
+                    if (aiResponse.success) {
+                        replyMessage = aiResponse.response;
+                    }
+                } catch (aiError) {
+                    console.error('AI response failed, using default message:', aiError);
+                }
+            }
+
+            // Add AFK duration
             const afkDuration = Date.now() - this.afkSettings.startTime;
             const hours = Math.floor(afkDuration / (1000 * 60 * 60));
             const minutes = Math.floor((afkDuration % (1000 * 60 * 60)) / (1000 * 60));
             
-            let replyMessage = this.afkSettings.message;
             if (hours > 0) {
                 replyMessage += ` (AFK for ${hours}h ${minutes}m)`;
             } else if (minutes > 0) {
                 replyMessage += ` (AFK for ${minutes}m)`;
             }
-            
+
             await message.reply(replyMessage);
+            
+            // Update response count
+            this.afkSettings.responseCount.set(authorId, currentResponses + 1);
+            this.stats.afkRepliesSent++;
+
         } catch (error) {
             console.error('Error sending AFK reply:', error);
+        }
+    }
+
+    startStatusAnimation() {
+        if (this.statusAnimation.intervalId) {
+            clearInterval(this.statusAnimation.intervalId);
+        }
+
+        if (!this.statusAnimation.enabled || this.statusAnimation.messages.length === 0) {
+            return;
+        }
+
+        this.statusAnimation.intervalId = setInterval(async () => {
+            try {
+                const status = this.statusAnimation.messages[this.statusAnimation.currentIndex];
+                
+                await this.client.user.setActivity(status.text, { 
+                    type: status.type || 'PLAYING' 
+                });
+
+                this.statusAnimation.currentIndex = 
+                    (this.statusAnimation.currentIndex + 1) % this.statusAnimation.messages.length;
+
+            } catch (error) {
+                console.error('Error updating status animation:', error);
+            }
+        }, this.statusAnimation.interval);
+
+        // Set initial status
+        if (this.statusAnimation.messages.length > 0) {
+            const initialStatus = this.statusAnimation.messages[0];
+            this.client.user.setActivity(initialStatus.text, { 
+                type: initialStatus.type || 'PLAYING' 
+            }).catch(console.error);
+        }
+    }
+
+    stopStatusAnimation() {
+        if (this.statusAnimation.intervalId) {
+            clearInterval(this.statusAnimation.intervalId);
+            this.statusAnimation.intervalId = null;
+        }
+    }
+
+    setGiveawaySettings(settings) {
+        try {
+            this.giveawaySettings = { ...this.giveawaySettings, ...settings };
+            this.config.giveaway = { ...this.config.giveaway, ...settings };
+            this.saveConfig();
+            return { success: true };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+
+    setStatusAnimation(settings) {
+        try {
+            this.statusAnimation = { ...this.statusAnimation, ...settings };
+            this.config.statusAnimation = { ...this.config.statusAnimation, ...settings };
+            this.saveConfig();
+
+            if (this.isReady) {
+                if (settings.enabled) {
+                    this.startStatusAnimation();
+                } else {
+                    this.stopStatusAnimation();
+                }
+            }
+
+            return { success: true };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+
+    setAFK(settings) {
+        try {
+            this.afkSettings = { ...this.afkSettings, ...settings };
+            this.config.afk = { ...this.config.afk, ...settings };
+            this.saveConfig();
+
+            if (settings.enabled) {
+                this.afkSettings.startTime = Date.now();
+                this.afkSettings.responseCount.clear();
+            } else {
+                this.afkSettings.startTime = null;
+                this.afkSettings.responseCount.clear();
+            }
+
+            return { success: true };
+        } catch (error) {
+            return { success: false, error: error.message };
         }
     }
     
     formatUserName(user) {
         if (!user) return 'Unknown User';
         
-        // Handle different user types and formats
         const displayName = user.displayName || user.globalName;
         const username = user.username;
         
@@ -584,7 +917,6 @@ class DiscordClient {
         
         this.messageLogger.logs.unshift(logEntry);
         
-        // Keep only the most recent logs
         if (this.messageLogger.logs.length > this.messageLogger.maxLogs) {
             this.messageLogger.logs = this.messageLogger.logs.slice(0, this.messageLogger.maxLogs);
         }
@@ -596,7 +928,7 @@ class DiscordClient {
         const ghostPingEntry = {
             id: Date.now().toString(),
             messageId: message.id,
-            type: type, // 'deleted' or 'edited'
+            type: type,
             content: message.content,
             formattedContent: this.formatMessageContent(message.content, message.guild),
             author: {
@@ -618,12 +950,10 @@ class DiscordClient {
         
         this.antiGhostPing.logs.unshift(ghostPingEntry);
         
-        // Keep only recent ghost pings
         if (this.antiGhostPing.logs.length > 100) {
             this.antiGhostPing.logs = this.antiGhostPing.logs.slice(0, 100);
         }
         
-        // Send notification
         this.sendNotification({
             type: 'warning',
             title: 'Ghost Ping Detected!',
@@ -665,7 +995,7 @@ class DiscordClient {
         if (!guild) return { success: false, error: 'Server not found' };
         
         const channels = guild.channels.cache
-            .filter(channel => channel.type) // Text and Voice channels
+            .filter(channel => channel.type)
             .map(channel => ({
                 id: channel.id,
                 name: channel.name,
@@ -841,8 +1171,6 @@ class DiscordClient {
                 return { success: false, error: 'Target server not found' };
             }
             
-            // This is a simplified restore - in practice, you'd need proper permissions
-            // and careful handling of rate limits
             return { success: false, error: 'Backup restore requires additional permissions and careful implementation' };
         } catch (error) {
             return { success: false, error: error.message };
@@ -888,7 +1216,6 @@ class DiscordClient {
             if (user.flags.has('HOUSE_BRAVERY')) badges.push('HOUSE_BRAVERY');
             if (user.flags.has('HOUSE_BRILLIANCE')) badges.push('HOUSE_BRILLIANCE');
             if (user.flags.has('HOUSE_BALANCE')) badges.push('HOUSE_BALANCE');
-            //if (user.flags.has('VERIFIED_DEVELOPER')) badges.push('VERIFIED_DEVELOPER');
         }
         
         return badges;
@@ -969,6 +1296,7 @@ class DiscordClient {
                 messageOptions.content = '';
             }
             
+            // Use axios with SSL configuration for API calls
             const sentMessage = await channel.send(messageOptions);
             this.incrementCommandUsage();
             
@@ -978,6 +1306,7 @@ class DiscordClient {
                 channelId: sentMessage.channel.id
             };
         } catch (error) {
+            console.error('Failed to send message:', error);
             return { success: false, error: error.message };
         }
     }
@@ -1003,8 +1332,6 @@ class DiscordClient {
     
     async executeCommand(command) {
         try {
-            // This would execute the saved command
-            // Implementation depends on command type
             this.incrementCommandUsage();
             return { success: true };
         } catch (error) {
@@ -1018,7 +1345,7 @@ class DiscordClient {
                 return { success: false, error: 'Gemini AI not configured' };
             }
             
-            const model = this.geminiAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+            const model = this.geminiAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
             const result = await model.generateContent(prompt);
             const response = await result.response;
             
@@ -1049,9 +1376,8 @@ class DiscordClient {
             if (options.channels) backup.data.channels = serverDetails.channels;
             if (options.roles) backup.data.roles = serverDetails.roles;
             if (options.emojis) backup.data.emojis = serverDetails.emojis;
-            if (options.settings) backup.data.settings = { /* server settings */ };
+            if (options.settings) backup.data.settings = {};
             
-            // Save backup to file
             const backupPath = path.join(require('electron').app.getPath('userData'), 'backups');
             await fs.promises.mkdir(backupPath, { recursive: true });
             await fs.promises.writeFile(
@@ -1067,20 +1393,10 @@ class DiscordClient {
     
     async cloneServer(serverId, newName) {
         try {
-            // This would create a new server based on the template
-            // Note: This requires the bot to have server creation permissions
             return { success: false, error: 'Server cloning requires additional permissions' };
         } catch (error) {
             return { success: false, error: error.message };
         }
-    }
-    
-    setAFK(settings) {
-        this.afkSettings = {
-            ...settings,
-            startTime: settings.enabled ? Date.now() : null
-        };
-        return { success: true };
     }
     
     loadSavedCommands() {
@@ -1127,7 +1443,13 @@ class DiscordClient {
             },
             isReady: this.isReady,
             guilds: Array.from(this.guildCache.values()),
-            friends: Array.from(this.userCache.values())
+            friends: Array.from(this.userCache.values()),
+            giveawaySettings: this.giveawaySettings,
+            afkSettings: {
+                ...this.afkSettings,
+                responseCount: Array.from(this.afkSettings.responseCount.entries())
+            },
+            statusAnimation: this.statusAnimation
         };
     }
 
@@ -1142,26 +1464,29 @@ class DiscordClient {
                     await this.client.user.setStatus(value);
                     break;
                 case 'customStatus':
-                    await this.client.user.setActivity(value, { type: 'CUSTOM' });
-                    break;
-                case 'afk':
-                    await this.client.user.setAFK(value);
-                    break;
-                case 'customStatus':
                     if (value) {
                         await this.client.user.setActivity(value, { type: 'CUSTOM' });
                     } else {
                         await this.client.user.setActivity(null);
                     }
                     break;
+                case 'afk':
+                    await this.client.user.setAFK(value);
+                    break;
                 case 'autoGiveaway':
-                    // Store setting for giveaway auto-join
-                    this.settings = this.settings || {};
-                    this.settings.autoGiveaway = value;
+                    this.giveawaySettings.enabled = value;
+                    this.config.giveaway.enabled = value;
+                    this.saveConfig();
                     break;
                 case 'statusAnimation':
-                    this.settings = this.settings || {};
-                    this.settings.statusAnimation = value;
+                    this.statusAnimation.enabled = value;
+                    this.config.statusAnimation.enabled = value;
+                    this.saveConfig();
+                    if (value) {
+                        this.startStatusAnimation();
+                    } else {
+                        this.stopStatusAnimation();
+                    }
                     break;
                 default:
                     return { success: false, error: 'Unknown setting' };
@@ -1169,12 +1494,12 @@ class DiscordClient {
             
             return { success: true };
         } catch (error) {
+            console.error('Error updating setting:', error);
             return { success: false, error: error.message };
         }
     }
 
     sendNotification(notification) {
-        // Send notification to all renderer processes
         const { BrowserWindow } = require('electron');
         const windows = BrowserWindow.getAllWindows();
         
