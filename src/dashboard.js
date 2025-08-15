@@ -86,6 +86,11 @@ class DashboardManager {
         document.getElementById('ai-auto-talk-feature').addEventListener('change', (e) => {
             this.updateFeatureSetting('aiAutoTalk.enabled', e.target.checked);
         });
+        
+        // AI Auto Talk configuration button
+        document.getElementById('ai-auto-talk-config-btn').addEventListener('click', () => {
+            this.showConfigModal('aiAutoTalk');
+        });
 
         // Configuration buttons
         document.querySelectorAll('.config-btn').forEach(btn => {
@@ -119,6 +124,14 @@ class DashboardManager {
         document.getElementById('save-gemini-settings').addEventListener('click', () => {
             this.saveGeminiSettings();
         });
+        
+        document.getElementById('view-ai-stats-btn').addEventListener('click', () => {
+            this.viewAIStats();
+        });
+        
+        document.getElementById('clear-ai-history-btn').addEventListener('click', () => {
+            this.clearAIHistory();
+        });
 
         document.getElementById('test-gemini-connection').addEventListener('click', () => {
             this.testGeminiConnection();
@@ -143,7 +156,7 @@ class DashboardManager {
 
     async loadConfig() {
         try {
-            const config = await window.electronAPI.invoke('discord-get-config');
+            const config = await window.electronAPI.getDiscordConfig();
             this.updateConfigInterface(config);
         } catch (error) {
             console.error('Error loading config:', error);
@@ -357,7 +370,7 @@ class DashboardManager {
 
     async updateFeatureSetting(key, value) {
         try {
-            await window.electronAPI.invoke('discord-set-config', key, value);
+            await window.electronAPI.setDiscordConfig(key, value);
             this.showToast(`${key} ${value ? 'enabled' : 'disabled'}`, 'success');
         } catch (error) {
             console.error('Error updating feature setting:', error);
@@ -379,7 +392,7 @@ class DashboardManager {
         if (!feature) return;
 
         try {
-            const config = await window.electronAPI.invoke('discord-get-config', feature);
+            const config = await window.electronAPI.getDiscordConfig(feature);
             
             switch (feature) {
                 case 'autoGiveaway':
@@ -417,7 +430,7 @@ class DashboardManager {
             if (result) {
                 try {
                     const newConfig = JSON.parse(result);
-                    window.electronAPI.invoke('discord-configure-auto-giveaway', newConfig);
+                    window.electronAPI.configureAutoGiveaway(newConfig);
                     this.showToast('Auto Giveaway config saved', 'success');
                 } catch (error) {
                     this.showToast('Invalid JSON configuration', 'error');
@@ -440,7 +453,7 @@ class DashboardManager {
             if (result) {
                 try {
                     const newConfig = JSON.parse(result);
-                    window.electronAPI.invoke('discord-configure-afk-auto-reply', newConfig);
+                    window.electronAPI.configureAFKAutoReply(newConfig);
                     this.showToast('AFK Auto-Reply config saved', 'success');
                 } catch (error) {
                     this.showToast('Invalid JSON configuration', 'error');
@@ -463,7 +476,7 @@ class DashboardManager {
             if (result) {
                 try {
                     const newConfig = JSON.parse(result);
-                    window.electronAPI.invoke('discord-configure-status-animation', newConfig);
+                    window.electronAPI.configureStatusAnimation(newConfig);
                     this.showToast('Status Animation config saved', 'success');
                 } catch (error) {
                     this.showToast('Invalid JSON configuration', 'error');
@@ -486,7 +499,7 @@ class DashboardManager {
             if (result) {
                 try {
                     const newConfig = JSON.parse(result);
-                    window.electronAPI.invoke('discord-configure-ai-auto-talk', newConfig);
+                    window.electronAPI.configureAIAutoTalk(newConfig);
                     this.showToast('AI Auto Talk config saved', 'success');
                 } catch (error) {
                     this.showToast('Invalid JSON configuration', 'error');
@@ -509,7 +522,7 @@ class DashboardManager {
             if (result) {
                 try {
                     const newConfig = JSON.parse(result);
-                    window.electronAPI.invoke('discord-configure-custom-rpc', newConfig);
+                    window.electronAPI.configureCustomRPC(newConfig);
                     this.showToast('Custom RPC config saved', 'success');
                 } catch (error) {
                     this.showToast('Invalid JSON configuration', 'error');
@@ -582,7 +595,7 @@ class DashboardManager {
 
     async loadBackups() {
         try {
-            const backups = await window.electronAPI.invoke('discord-get-backups');
+            const backups = await window.electronAPI.getBackups();
             this.displayBackups(backups);
         } catch (error) {
             console.error('Error loading backups:', error);
@@ -620,7 +633,7 @@ class DashboardManager {
 
         if (confirmed) {
             try {
-                await window.electronAPI.invoke('discord-delete-backup', backupId);
+                await window.electronAPI.deleteBackup(backupId);
                 this.showToast('Backup deleted', 'success');
                 this.loadBackups();
             } catch (error) {
@@ -642,8 +655,8 @@ class DashboardManager {
         const enabled = document.getElementById('gemini-enabled').checked;
 
         try {
-            await window.electronAPI.invoke('discord-setup-gemini', apiKey);
-            await window.electronAPI.invoke('discord-set-config', 'gemini.enabled', enabled);
+            await window.electronAPI.setupGemini(apiKey);
+            await window.electronAPI.setDiscordConfig('gemini.enabled', enabled);
             this.showToast('Gemini settings saved', 'success');
         } catch (error) {
             this.showToast('Error saving Gemini settings: ' + error.message, 'error');
@@ -665,7 +678,7 @@ class DashboardManager {
 
     async viewAIStats() {
         try {
-            const stats = await window.electronAPI.invoke('discord-get-ai-auto-talk-stats');
+            const stats = await window.electronAPI.getAIAutoTalkStats();
             const message = `AI Auto Talk Statistics:
 
 Active Conversations: ${stats.activeConversations}
@@ -692,7 +705,7 @@ Rate Limited Users: ${stats.rateLimitedUsers}`;
 
         if (confirmed) {
             try {
-                await window.electronAPI.invoke('discord-clear-ai-conversation-history');
+                await window.electronAPI.clearAIConversationHistory();
                 this.showToast('AI conversation history cleared', 'success');
             } catch (error) {
                 this.showToast('Error clearing AI history: ' + error.message, 'error');
