@@ -1,0 +1,19 @@
+{
+  "ssl": {
+    "rejectUnauthorized": false,
+    "timeout": 30000,
+    "secureProtocol": "TLSv1_2_method",
+    "keepAlive": true,
+    "maxSockets": 10
+  },
+  "https": {
+    "agent": {
+      "rejectUnauthorized": false,
+      "secureProtocol": "TLSv1_2_method",
+      "timeout": 30000
+    }
+  },
+  "environment": {
+    "NODE_TLS_REJECT_UNAUTHORIZED": "0"
+  }
+}
