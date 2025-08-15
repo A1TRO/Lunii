@@ -228,11 +228,7 @@ class DiscordClient {
     }
 
     setupIPC() {
-        // Authentication
-        ipcMain.handle('login', async (event, token, saveToken = false) => {
-            return await this.login(token, saveToken);
-        });
-
+    
         // User data
         ipcMain.handle('discord-get-user-data', () => {
             return this.getUserData();
