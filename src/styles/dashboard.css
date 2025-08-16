@@ -1597,9 +1597,68 @@ body {
     border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+/* RPC Configuration */
+.rpc-config {
+    margin-top: 16px;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+}
+
+.rpc-timestamps {
+    margin: 16px 0;
+}
+
+.rpc-buttons {
+    margin-top: 20px;
+}
+
+.rpc-buttons h5 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 12px;
+}
+
+.rpc-button-item {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.rpc-button-item input {
+    flex: 1;
+    background: rgba(15, 23, 42, 0.6);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 14px;
+    color: #ffffff;
+    transition: all 0.3s ease;
+    font-family: 'Inter', sans-serif;
+}
+
+.rpc-button-item input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.rpc-button-item input:focus {
+    outline: none;
+    border-color: rgba(79, 70, 229, 0.5);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
 /* Status Messages Section */
 .status-messages-section {
-    grid-column: 1 / -1;
+    margin-top: 20px;
+}
+
+.status-messages-section h5 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 12px;
 }
 
 .status-messages-list {
@@ -1660,6 +1719,17 @@ body {
 .status-message-remove:hover {
     background: rgba(239, 68, 68, 0.3);
     transform: scale(1.1);
+}
+
+/* Action Button Variants */
+.action-btn.danger {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: #ffffff;
+}
+
+.action-btn.danger:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
 }
 
 /* Backup Page */

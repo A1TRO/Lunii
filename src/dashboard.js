@@ -1,3 +1,5 @@
+const Modal = require('./modal-manager.js');
+
 class DashboardManager {
     constructor() {
         this.currentPage = 'overview';
@@ -12,6 +14,11 @@ class DashboardManager {
         this.messageTemplates = [];
         this.currentCommandType = 'regular';
         this.isAIGenerating = false;
+        this.settings = {};
+        this.rpcSettings = {};
+        this.statusAnimationInterval = null;
+        this.statusMessages = [];
+        this.currentStatusIndex = 0;
         
         this.init();
     }
@@ -28,12 +35,15 @@ class DashboardManager {
             this.setupBackupSystem();
             this.setupLogging();
             this.setupSettings();
+            this.setupNotificationListener();
+            this.setupUpdateListener();
             
             await this.loadUserData();
             await this.loadStats();
             await this.loadNotifications();
             await this.loadSavedCommands();
             await this.loadMessageTemplates();
+            await this.loadSettings();
             
             this.startUptimeCounter();
             this.startDataRefresh();
@@ -73,6 +83,66 @@ class DashboardManager {
 
         document.getElementById('clear-status-btn')?.addEventListener('click', () => {
             this.clearCustomStatus();
+        });
+
+        // Settings toggles
+        document.getElementById('notifications-toggle')?.addEventListener('change', (e) => {
+            this.updateSetting('notifications', e.target.checked);
+        });
+        
+        document.getElementById('message-logging-toggle')?.addEventListener('change', (e) => {
+            this.updateSetting('messageLogging', e.target.checked);
+        });
+        
+        document.getElementById('anti-ghost-ping-toggle')?.addEventListener('change', (e) => {
+            this.updateSetting('antiGhostPing', e.target.checked);
+        });
+        
+        document.getElementById('auto-giveaway-settings-toggle')?.addEventListener('change', (e) => {
+            this.updateSetting('autoGiveaway', e.target.checked);
+        });
+        
+        // Gemini AI settings
+        document.getElementById('save-gemini-btn')?.addEventListener('click', () => {
+            this.saveGeminiSettings();
+        });
+        
+        document.getElementById('test-gemini-btn')?.addEventListener('click', () => {
+            this.testGeminiConnection();
+        });
+        
+        // RPC settings
+        document.getElementById('rpc-enabled-toggle')?.addEventListener('change', (e) => {
+            this.toggleRPCConfig(e.target.checked);
+        });
+        
+        document.getElementById('save-rpc-btn')?.addEventListener('click', () => {
+            this.saveRPCSettings();
+        });
+        
+        document.getElementById('disconnect-rpc-btn')?.addEventListener('click', () => {
+            this.disconnectRPC();
+        });
+        
+        document.getElementById('rpc-show-elapsed')?.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                this.rpcSettings.startTimestamp = Date.now();
+            } else {
+                this.rpcSettings.startTimestamp = null;
+            }
+        });
+        
+        // Data management
+        document.getElementById('export-settings-btn')?.addEventListener('click', () => {
+            this.exportSettings();
+        });
+        
+        document.getElementById('import-settings-btn')?.addEventListener('click', () => {
+            this.importSettings();
+        });
+        
+        document.getElementById('reset-settings-btn')?.addEventListener('click', () => {
+            this.resetSettings();
         });
 
         // Notification actions
@@ -237,12 +307,68 @@ class DashboardManager {
             this.updateAutomationFeature('statusAnimation', e.target.checked);
         });
 
+        // Automation feature toggles
+        document.getElementById('auto-giveaway-feature-toggle')?.addEventListener('change', (e) => {
+            this.updateSetting('autoGiveaway', e.target.checked);
+        });
+        
+        document.getElementById('afk-feature-toggle')?.addEventListener('change', (e) => {
+            this.toggleAFK(e.target.checked);
+        });
+        
+        document.getElementById('status-animation-feature-toggle')?.addEventListener('change', (e) => {
+            this.toggleStatusAnimation(e.target.checked);
+        });
+
         // Configuration buttons
         document.querySelectorAll('.config-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const feature = e.target.closest('.feature-card').querySelector('input').id.replace('-feature', '');
                 this.configureAutomationFeature(feature);
             });
+        });
+
+        document.getElementById('config-afk-btn')?.addEventListener('click', () => {
+            this.showAFKConfig();
+        });
+
+        document.getElementById('config-giveaway-btn')?.addEventListener('click', () => {
+            this.showGiveawayConfig();
+        });
+
+        document.getElementById('config-status-animation-btn')?.addEventListener('click', () => {
+            this.showStatusAnimationConfig();
+        });
+        
+        // Status animation controls
+        document.getElementById('add-status-message-btn')?.addEventListener('click', () => {
+            this.addStatusMessage();
+        });
+        
+        document.getElementById('save-status-animation-config')?.addEventListener('click', () => {
+            this.saveStatusAnimationConfig();
+        });
+        
+        document.getElementById('cancel-status-animation-config')?.addEventListener('click', () => {
+            this.hideStatusAnimationConfig();
+        });
+        
+        // AFK config
+        document.getElementById('save-afk-config')?.addEventListener('click', () => {
+            this.saveAFKConfig();
+        });
+        
+        document.getElementById('cancel-afk-config')?.addEventListener('click', () => {
+            this.hideAFKConfig();
+        });
+        
+        // Giveaway config
+        document.getElementById('save-giveaway-config')?.addEventListener('click', () => {
+            this.saveGiveawayConfig();
+        });
+        
+        document.getElementById('cancel-giveaway-config')?.addEventListener('click', () => {
+            this.hideGiveawayConfig();
         });
     }
 
@@ -313,6 +439,35 @@ class DashboardManager {
 
         document.getElementById('debug-mode')?.addEventListener('change', (e) => {
             this.updateSetting('debugMode', e.target.checked);
+        });
+    }
+
+    setupNotificationListener() {
+        window.electronAPI.onDiscordNotification((event, notification) => {
+            this.addNotification(notification);
+        });
+    }
+    
+    setupUpdateListener() {
+        window.electronAPI.onUpdateAvailable((event, updateData) => {
+            this.showUpdateNotification(updateData);
+        });
+    }
+    
+    showUpdateNotification(updateData) {
+        Modal.confirm({
+            title: 'Update Available',
+            message: `Lunii ${updateData.latestVersion} is now available!`,
+            details: `You're currently running version ${updateData.currentVersion}. Would you like to download and install the update now?`,
+            type: 'info',
+            confirmText: 'Update Now',
+            cancelText: 'Later'
+        }).then(confirmed => {
+            if (confirmed) {
+                window.electronAPI.invoke('updater-show-update-window');
+            } else {
+                window.electronAPI.invoke('updater-dismiss-notification');
+            }
         });
     }
 
@@ -400,6 +555,71 @@ class DashboardManager {
             this.updateStatsInterface();
         } catch (error) {
             console.error('Error loading stats:', error);
+        }
+    }
+    
+    async loadSettings() {
+        try {
+            this.settings = await window.electronAPI.getDiscordSettings() || {};
+            this.rpcSettings = await window.electronAPI.getRPCSettings() || {};
+            
+            // Apply settings to UI
+            this.applySettingsToUI();
+        } catch (error) {
+            console.error('Error loading settings:', error);
+        }
+    }
+    
+    applySettingsToUI() {
+        // General settings
+        if (this.settings.notifications !== undefined) {
+            document.getElementById('notifications-toggle').checked = this.settings.notifications;
+        }
+        if (this.settings.messageLogging !== undefined) {
+            document.getElementById('message-logging-toggle').checked = this.settings.messageLogging;
+        }
+        if (this.settings.antiGhostPing !== undefined) {
+            document.getElementById('anti-ghost-ping-toggle').checked = this.settings.antiGhostPing;
+        }
+        if (this.settings.autoGiveaway !== undefined) {
+            document.getElementById('auto-giveaway-settings-toggle').checked = this.settings.autoGiveaway;
+            document.getElementById('auto-giveaway-toggle').checked = this.settings.autoGiveaway;
+            document.getElementById('auto-giveaway-feature-toggle').checked = this.settings.autoGiveaway;
+        }
+        if (this.settings.statusAnimation !== undefined) {
+            document.getElementById('status-animation-feature-toggle').checked = this.settings.statusAnimation;
+        }
+        
+        // Gemini API key
+        if (this.settings.geminiApiKey) {
+            document.getElementById('gemini-api-key').value = this.settings.geminiApiKey;
+        }
+        
+        // RPC settings
+        if (this.rpcSettings.enabled) {
+            document.getElementById('rpc-enabled-toggle').checked = true;
+            this.toggleRPCConfig(true);
+            this.populateRPCFields();
+        }
+    }
+    
+    populateRPCFields() {
+        document.getElementById('rpc-client-id').value = this.rpcSettings.clientId || '';
+        document.getElementById('rpc-details').value = this.rpcSettings.details || '';
+        document.getElementById('rpc-state').value = this.rpcSettings.state || '';
+        document.getElementById('rpc-large-image').value = this.rpcSettings.largeImageKey || '';
+        document.getElementById('rpc-large-text').value = this.rpcSettings.largeImageText || '';
+        document.getElementById('rpc-small-image').value = this.rpcSettings.smallImageKey || '';
+        document.getElementById('rpc-small-text').value = this.rpcSettings.smallImageText || '';
+        document.getElementById('rpc-show-elapsed').checked = !!this.rpcSettings.startTimestamp;
+        
+        if (this.rpcSettings.buttons && this.rpcSettings.buttons.length > 0) {
+            document.getElementById('rpc-button1-label').value = this.rpcSettings.buttons[0]?.label || '';
+            document.getElementById('rpc-button1-url').value = this.rpcSettings.buttons[0]?.url || '';
+            if (this.rpcSettings.buttons[1]) {
+                document.getElementById('rpc-button2-label').value = this.rpcSettings.buttons[1].label || '';
+                document.getElementById('rpc-button2-url').value = this.rpcSettings.buttons[1].url || '';
+            }
         }
     }
 
@@ -614,51 +834,604 @@ class DashboardManager {
         this.updateNotificationsInterface();
     }
 
-    async updateSetting(setting, value) {
-        try {
-            if (window.electronAPI?.updateDiscordSetting) {
-                const result = await window.electronAPI.updateDiscordSetting(setting, value);
-                if (result.success) {
-                    this.showSuccess(`${setting} updated successfully`);
-                } else {
-                    throw new Error(result.error);
-                }
-            }
-        } catch (error) {
-            console.error(`Error updating ${setting}:`, error);
-            this.showError(`Failed to update ${setting}: ${error.message}`);
-        }
-    }
-
     async updateCustomStatus() {
-        const statusInput = document.getElementById('custom-status-input');
-        const statusTypeSelect = document.getElementById('status-type-select');
+        const statusText = document.getElementById('custom-status-input').value.trim();
+        const statusType = document.getElementById('status-selector').value;
         
-        if (!statusInput || !statusTypeSelect) return;
-
-        const status = statusInput.value.trim();
-        const type = statusTypeSelect.value;
-
         try {
-            await this.updateSetting('customStatus', status);
-            await this.updateSetting('status', type);
-            this.showSuccess('Status updated successfully');
+            if (statusText) {
+                await window.electronAPI.updateDiscordSetting('customStatus', statusText);
+            }
+            if (statusType) {
+                await window.electronAPI.updateDiscordSetting('status', statusType);
+            }
+            
+            Modal.toast({
+                title: 'Status Updated',
+                message: 'Your Discord status has been updated successfully',
+                type: 'success'
+            });
         } catch (error) {
-            this.showError('Failed to update status');
+            Modal.toast({
+                title: 'Status Update Failed',
+                message: error.message || 'Failed to update status',
+                type: 'error'
+            });
         }
     }
-
+    
     async clearCustomStatus() {
         try {
-            await this.updateSetting('customStatus', '');
-            const statusInput = document.getElementById('custom-status-input');
-            if (statusInput) {
-                statusInput.value = '';
-            }
-            this.showSuccess('Status cleared');
+            await window.electronAPI.updateDiscordSetting('customStatus', '');
+            document.getElementById('custom-status-input').value = '';
+            
+            Modal.toast({
+                title: 'Status Cleared',
+                message: 'Your custom status has been cleared',
+                type: 'success'
+            });
         } catch (error) {
-            this.showError('Failed to clear status');
+            Modal.toast({
+                title: 'Clear Status Failed',
+                message: error.message || 'Failed to clear status',
+                type: 'error'
+            });
         }
+    }
+    
+    async updateSetting(setting, value) {
+        try {
+            const result = await window.electronAPI.updateDiscordSetting(setting, value);
+            if (result.success) {
+                this.settings[setting] = value;
+                Modal.toast({
+                    title: 'Setting Updated',
+                    message: `${setting} has been updated`,
+                    type: 'success'
+                });
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error) {
+            Modal.toast({
+                title: 'Setting Update Failed',
+                message: error.message || 'Failed to update setting',
+                type: 'error'
+            });
+        }
+    }
+    
+    async saveGeminiSettings() {
+        const apiKey = document.getElementById('gemini-api-key').value.trim();
+        
+        if (!apiKey) {
+            Modal.toast({
+                title: 'API Key Required',
+                message: 'Please enter your Gemini API key',
+                type: 'warning'
+            });
+            return;
+        }
+        
+        try {
+            const result = await window.electronAPI.setupGemini(apiKey);
+            if (result.success) {
+                Modal.toast({
+                    title: 'Gemini AI Configured',
+                    message: 'AI assistant is now ready to use',
+                    type: 'success'
+                });
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error) {
+            Modal.toast({
+                title: 'Configuration Failed',
+                message: error.message || 'Failed to configure Gemini AI',
+                type: 'error'
+            });
+        }
+    }
+    
+    async testGeminiConnection() {
+        try {
+            const result = await window.electronAPI.getDiscordAIAssistance('Test connection');
+            if (result.success) {
+                Modal.toast({
+                    title: 'Connection Successful',
+                    message: 'Gemini AI is working correctly',
+                    type: 'success'
+                });
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error) {
+            Modal.toast({
+                title: 'Connection Failed',
+                message: error.message || 'Failed to connect to Gemini AI',
+                type: 'error'
+            });
+        }
+    }
+    
+    toggleRPCConfig(enabled) {
+        const configPanel = document.getElementById('rpc-config');
+        const disconnectBtn = document.getElementById('disconnect-rpc-btn');
+        
+        if (enabled) {
+            configPanel.style.display = 'block';
+            if (this.rpcSettings.enabled) {
+                disconnectBtn.style.display = 'inline-flex';
+            }
+        } else {
+            configPanel.style.display = 'none';
+            disconnectBtn.style.display = 'none';
+            if (this.rpcSettings.enabled) {
+                this.disconnectRPC();
+            }
+        }
+    }
+    
+    async saveRPCSettings() {
+        const rpcData = {
+            clientId: document.getElementById('rpc-client-id').value.trim(),
+            details: document.getElementById('rpc-details').value.trim(),
+            state: document.getElementById('rpc-state').value.trim(),
+            largeImageKey: document.getElementById('rpc-large-image').value.trim(),
+            largeImageText: document.getElementById('rpc-large-text').value.trim(),
+            smallImageKey: document.getElementById('rpc-small-image').value.trim(),
+            smallImageText: document.getElementById('rpc-small-text').value.trim(),
+            startTimestamp: document.getElementById('rpc-show-elapsed').checked ? Date.now() : null,
+            buttons: []
+        };
+        
+        // Add buttons if they have both label and URL
+        const button1Label = document.getElementById('rpc-button1-label').value.trim();
+        const button1URL = document.getElementById('rpc-button1-url').value.trim();
+        if (button1Label && button1URL) {
+            rpcData.buttons.push({ label: button1Label, url: button1URL });
+        }
+        
+        const button2Label = document.getElementById('rpc-button2-label').value.trim();
+        const button2URL = document.getElementById('rpc-button2-url').value.trim();
+        if (button2Label && button2URL) {
+            rpcData.buttons.push({ label: button2Label, url: button2URL });
+        }
+        
+        if (!rpcData.clientId) {
+            Modal.toast({
+                title: 'Client ID Required',
+                message: 'Please enter your Discord application client ID',
+                type: 'warning'
+            });
+            return;
+        }
+        
+        try {
+            let result;
+            if (this.rpcSettings.enabled) {
+                result = await window.electronAPI.updateRPC(rpcData);
+            } else {
+                result = await window.electronAPI.setupRPC(rpcData);
+            }
+            
+            if (result.success) {
+                this.rpcSettings = { ...this.rpcSettings, ...rpcData, enabled: true };
+                document.getElementById('disconnect-rpc-btn').style.display = 'inline-flex';
+                
+                Modal.toast({
+                    title: 'RPC Updated',
+                    message: 'Custom Rich Presence is now active',
+                    type: 'success'
+                });
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error) {
+            Modal.toast({
+                title: 'RPC Setup Failed',
+                message: error.message || 'Failed to setup Rich Presence',
+                type: 'error'
+            });
+        }
+    }
+    
+    async disconnectRPC() {
+        try {
+            const result = await window.electronAPI.disconnectRPC();
+            if (result.success) {
+                this.rpcSettings.enabled = false;
+                document.getElementById('rpc-enabled-toggle').checked = false;
+                document.getElementById('disconnect-rpc-btn').style.display = 'none';
+                this.toggleRPCConfig(false);
+                
+                Modal.toast({
+                    title: 'RPC Disconnected',
+                    message: 'Custom Rich Presence has been disabled',
+                    type: 'success'
+                });
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error) {
+            Modal.toast({
+                title: 'Disconnect Failed',
+                message: error.message || 'Failed to disconnect RPC',
+                type: 'error'
+            });
+        }
+    }
+    
+    toggleStatusAnimation(enabled) {
+        if (enabled) {
+            this.startStatusAnimation();
+        } else {
+            this.stopStatusAnimation();
+        }
+        this.updateSetting('statusAnimation', enabled);
+    }
+    
+    startStatusAnimation() {
+        if (this.statusAnimationInterval) {
+            clearInterval(this.statusAnimationInterval);
+        }
+        
+        const interval = (this.settings.statusAnimationInterval || 30) * 1000;
+        this.statusMessages = this.settings.statusMessages || [
+            { text: 'Working on something cool...', type: 'PLAYING' },
+            { text: 'Building the future', type: 'CUSTOM' },
+            { text: 'Discord automation', type: 'WATCHING' }
+        ];
+        
+        if (this.statusMessages.length === 0) return;
+        
+        this.statusAnimationInterval = setInterval(() => {
+            const message = this.statusMessages[this.currentStatusIndex];
+            this.setAnimatedStatus(message);
+            this.currentStatusIndex = (this.currentStatusIndex + 1) % this.statusMessages.length;
+        }, interval);
+        
+        // Set initial status
+        if (this.statusMessages.length > 0) {
+            this.setAnimatedStatus(this.statusMessages[0]);
+        }
+    }
+    
+    stopStatusAnimation() {
+        if (this.statusAnimationInterval) {
+            clearInterval(this.statusAnimationInterval);
+            this.statusAnimationInterval = null;
+        }
+    }
+    
+    async setAnimatedStatus(message) {
+        try {
+            await window.electronAPI.updateDiscordSetting('customStatus', message.text);
+        } catch (error) {
+            console.error('Error setting animated status:', error);
+        }
+    }
+    
+    showStatusAnimationConfig() {
+        document.getElementById('status-animation-config').style.display = 'block';
+        this.loadStatusMessages();
+    }
+    
+    hideStatusAnimationConfig() {
+        document.getElementById('status-animation-config').style.display = 'none';
+    }
+    
+    loadStatusMessages() {
+        const container = document.getElementById('status-messages-list');
+        const messages = this.settings.statusMessages || [];
+        
+        container.innerHTML = '';
+        
+        messages.forEach((message, index) => {
+            this.addStatusMessageToUI(message, index);
+        });
+        
+        if (messages.length === 0) {
+            this.addStatusMessageToUI({ text: '', type: 'PLAYING' }, 0);
+        }
+        
+        // Set interval value
+        document.getElementById('animation-interval').value = this.settings.statusAnimationInterval || 30;
+    }
+    
+    addStatusMessage() {
+        const container = document.getElementById('status-messages-list');
+        const index = container.children.length;
+        this.addStatusMessageToUI({ text: '', type: 'PLAYING' }, index);
+    }
+    
+    addStatusMessageToUI(message, index) {
+        const container = document.getElementById('status-messages-list');
+        const item = document.createElement('div');
+        item.className = 'status-message-item';
+        item.innerHTML = `
+            <input type="text" placeholder="Status message" value="${message.text}">
+            <select>
+                <option value="PLAYING" ${message.type === 'PLAYING' ? 'selected' : ''}>Playing</option>
+                <option value="STREAMING" ${message.type === 'STREAMING' ? 'selected' : ''}>Streaming</option>
+                <option value="LISTENING" ${message.type === 'LISTENING' ? 'selected' : ''}>Listening</option>
+                <option value="WATCHING" ${message.type === 'WATCHING' ? 'selected' : ''}>Watching</option>
+                <option value="CUSTOM" ${message.type === 'CUSTOM' ? 'selected' : ''}>Custom</option>
+            </select>
+            <button class="status-message-remove">×</button>
+        `;
+        
+        item.querySelector('.status-message-remove').addEventListener('click', () => {
+            item.remove();
+        });
+        
+        container.appendChild(item);
+    }
+    
+    async saveStatusAnimationConfig() {
+        const interval = parseInt(document.getElementById('animation-interval').value);
+        const messageItems = document.querySelectorAll('.status-message-item');
+        const messages = [];
+        
+        messageItems.forEach(item => {
+            const text = item.querySelector('input[type="text"]').value.trim();
+            const type = item.querySelector('select').value;
+            if (text) {
+                messages.push({ text, type });
+            }
+        });
+        
+        if (messages.length === 0) {
+            Modal.toast({
+                title: 'No Messages',
+                message: 'Please add at least one status message',
+                type: 'warning'
+            });
+            return;
+        }
+        
+        this.settings.statusAnimationInterval = interval;
+        this.settings.statusMessages = messages;
+        
+        try {
+            await window.electronAPI.saveDiscordSettings(this.settings);
+            this.hideStatusAnimationConfig();
+            
+            // Restart animation if enabled
+            if (document.getElementById('status-animation-feature-toggle').checked) {
+                this.startStatusAnimation();
+            }
+            
+            Modal.toast({
+                title: 'Configuration Saved',
+                message: 'Status animation settings have been saved',
+                type: 'success'
+            });
+        } catch (error) {
+            Modal.toast({
+                title: 'Save Failed',
+                message: error.message || 'Failed to save configuration',
+                type: 'error'
+            });
+        }
+    }
+    
+    showAFKConfig() {
+        document.getElementById('afk-config').style.display = 'block';
+        
+        // Load current AFK settings
+        if (this.settings.afkMessage) {
+            document.getElementById('afk-message').value = this.settings.afkMessage;
+        }
+        if (this.settings.afkShowDuration !== undefined) {
+            document.getElementById('afk-show-duration').checked = this.settings.afkShowDuration;
+        }
+        if (this.settings.afkDMOnly !== undefined) {
+            document.getElementById('afk-dm-only').checked = this.settings.afkDMOnly;
+        }
+    }
+    
+    hideAFKConfig() {
+        document.getElementById('afk-config').style.display = 'none';
+    }
+    
+    async saveAFKConfig() {
+        const message = document.getElementById('afk-message').value.trim();
+        const showDuration = document.getElementById('afk-show-duration').checked;
+        const dmOnly = document.getElementById('afk-dm-only').checked;
+        
+        const afkSettings = {
+            enabled: document.getElementById('afk-feature-toggle').checked,
+            message: message || "I'm currently AFK. I'll get back to you soon!",
+            showDuration,
+            dmOnly
+        };
+        
+        try {
+            const result = await window.electronAPI.setDiscordAFK(afkSettings);
+            if (result.success) {
+                this.settings.afkMessage = afkSettings.message;
+                this.settings.afkShowDuration = afkSettings.showDuration;
+                this.settings.afkDMOnly = afkSettings.dmOnly;
+                
+                await window.electronAPI.saveDiscordSettings(this.settings);
+                this.hideAFKConfig();
+                
+                Modal.toast({
+                    title: 'AFK Configuration Saved',
+                    message: 'AFK auto-reply settings have been updated',
+                    type: 'success'
+                });
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error) {
+            Modal.toast({
+                title: 'Save Failed',
+                message: error.message || 'Failed to save AFK configuration',
+                type: 'error'
+            });
+        }
+    }
+    
+    showGiveawayConfig() {
+        document.getElementById('giveaway-config').style.display = 'block';
+        
+        // Load current settings
+        if (this.settings.giveawayVerifiedOnly !== undefined) {
+            document.getElementById('giveaway-verified-only').checked = this.settings.giveawayVerifiedOnly;
+        }
+        if (this.settings.giveawayKeywords !== undefined) {
+            document.getElementById('giveaway-keywords').checked = this.settings.giveawayKeywords;
+        }
+        if (this.settings.giveawayNotifications !== undefined) {
+            document.getElementById('giveaway-notifications').checked = this.settings.giveawayNotifications;
+        }
+        if (this.settings.giveawayDelay !== undefined) {
+            document.getElementById('giveaway-delay').value = this.settings.giveawayDelay;
+        }
+    }
+    
+    hideGiveawayConfig() {
+        document.getElementById('giveaway-config').style.display = 'none';
+    }
+    
+    async saveGiveawayConfig() {
+        const config = {
+            giveawayVerifiedOnly: document.getElementById('giveaway-verified-only').checked,
+            giveawayKeywords: document.getElementById('giveaway-keywords').checked,
+            giveawayNotifications: document.getElementById('giveaway-notifications').checked,
+            giveawayDelay: parseInt(document.getElementById('giveaway-delay').value)
+        };
+        
+        try {
+            this.settings = { ...this.settings, ...config };
+            await window.electronAPI.saveDiscordSettings(this.settings);
+            this.hideGiveawayConfig();
+            
+            Modal.toast({
+                title: 'Configuration Saved',
+                message: 'Giveaway settings have been updated',
+                type: 'success'
+            });
+        } catch (error) {
+            Modal.toast({
+                title: 'Save Failed',
+                message: error.message || 'Failed to save giveaway configuration',
+                type: 'error'
+            });
+        }
+    }
+    
+    async exportSettings() {
+        try {
+            const settings = await window.electronAPI.getDiscordSettings();
+            const dataStr = JSON.stringify(settings, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(dataBlob);
+            link.download = `lunii-settings-${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            
+            Modal.toast({
+                title: 'Settings Exported',
+                message: 'Settings have been exported successfully',
+                type: 'success'
+            });
+        } catch (error) {
+            Modal.toast({
+                title: 'Export Failed',
+                message: error.message || 'Failed to export settings',
+                type: 'error'
+            });
+        }
+    }
+    
+    async importSettings() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        
+        input.onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            try {
+                const text = await file.text();
+                const settings = JSON.parse(text);
+                
+                const confirmed = await Modal.confirm({
+                    title: 'Import Settings',
+                    message: 'This will overwrite your current settings. Are you sure?',
+                    type: 'warning',
+                    danger: true
+                });
+                
+                if (confirmed) {
+                    await window.electronAPI.saveDiscordSettings(settings);
+                    this.settings = settings;
+                    this.applySettingsToUI();
+                    
+                    Modal.toast({
+                        title: 'Settings Imported',
+                        message: 'Settings have been imported successfully',
+                        type: 'success'
+                    });
+                }
+            } catch (error) {
+                Modal.toast({
+                    title: 'Import Failed',
+                    message: 'Invalid settings file or import error',
+                    type: 'error'
+                });
+            }
+        };
+        
+        input.click();
+    }
+    
+    async resetSettings() {
+        const confirmed = await Modal.confirm({
+            title: 'Reset All Settings',
+            message: 'This will reset all settings to their default values. This action cannot be undone.',
+            type: 'warning',
+            danger: true,
+            confirmText: 'Reset Settings'
+        });
+        
+        if (confirmed) {
+            try {
+                const defaultSettings = {
+                    autoGiveaway: false,
+                    statusAnimation: false,
+                    messageLogging: true,
+                    antiGhostPing: true,
+                    notifications: true
+                };
+                
+                await window.electronAPI.saveDiscordSettings(defaultSettings);
+                this.settings = defaultSettings;
+                this.applySettingsToUI();
+                
+                Modal.toast({
+                    title: 'Settings Reset',
+                    message: 'All settings have been reset to defaults',
+                    type: 'success'
+                });
+            } catch (error) {
+                Modal.toast({
+                    title: 'Reset Failed',
+                    message: error.message || 'Failed to reset settings',
+                    type: 'error'
+                });
+            }
+        }
+    }
+
+    async refreshFriends() {
+        await this.loadFriends();
+        this.showSuccess('Friends list refreshed');
     }
 
     async loadFriends() {
@@ -718,11 +1491,6 @@ class DashboardManager {
             </div>
         `;
         return element;
-    }
-
-    async refreshFriends() {
-        await this.loadFriends();
-        this.showSuccess('Friends list refreshed');
     }
 
     async loadServers() {
@@ -1946,6 +2714,14 @@ class DashboardManager {
             offline: 'Offline'
         };
         return statusMap[status] || 'Offline';
+    }
+    
+    toggleAFK(enabled) {
+        if (enabled) {
+            this.showAFKConfig();
+        } else {
+            window.electronAPI.setDiscordAFK({ enabled: false });
+        }
     }
 
     showSuccess(message) {
