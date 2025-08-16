@@ -1,6 +1,7 @@
 const { Client } = require('discord.js-selfbot-v13');
 const { ipcMain } = require('electron');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const RPC = require('discord-rpc');
 const fs = require('fs');
 const path = require('path');
 
@@ -42,6 +43,23 @@ class DiscordClient {
             logs: []
         };
         this.messageTemplates = this.loadMessageTemplates();
+        this.rpcClient = null;
+        this.rpcSettings = {
+            enabled: false,
+            clientId: '',
+            details: '',
+            state: '',
+            largeImageKey: '',
+            largeImageText: '',
+            smallImageKey: '',
+            smallImageText: '',
+            startTimestamp: null,
+            endTimestamp: null,
+            partySize: null,
+            partyMax: null,
+            buttons: []
+        };
+        this.settings = this.loadSettings();
         
         this.setupIPC();
     }
@@ -185,6 +203,32 @@ class DiscordClient {
         // Handle Gemini AI
         ipcMain.handle('discord-setup-gemini', (event, apiKey) => {
             return this.initializeGeminiAI(apiKey);
+        });
+        
+        // Handle RPC settings
+        ipcMain.handle('discord-setup-rpc', async (event, rpcSettings) => {
+            return await this.setupRPC(rpcSettings);
+        });
+        
+        ipcMain.handle('discord-update-rpc', async (event, rpcData) => {
+            return await this.updateRPC(rpcData);
+        });
+        
+        ipcMain.handle('discord-disconnect-rpc', async () => {
+            return await this.disconnectRPC();
+        });
+        
+        ipcMain.handle('discord-get-rpc-settings', () => {
+            return this.getRPCSettings();
+        });
+        
+        // Handle configuration
+        ipcMain.handle('discord-get-settings', () => {
+            return this.getSettings();
+        });
+        
+        ipcMain.handle('discord-save-settings', (event, settings) => {
+            return this.saveSettings(settings);
         });
         
         // Handle backup operations
@@ -1104,9 +1148,168 @@ class DiscordClient {
         }
     }
     
+    async setupRPC(rpcSettings) {
+        try {
+            if (this.rpcClient) {
+                await this.disconnectRPC();
+            }
+            
+            if (!rpcSettings.clientId) {
+                return { success: false, error: 'Client ID is required' };
+            }
+            
+            this.rpcSettings = { ...this.rpcSettings, ...rpcSettings };
+            
+            this.rpcClient = new RPC.Client({ transport: 'ipc' });
+            
+            await this.rpcClient.login({ clientId: rpcSettings.clientId });
+            
+            // Set initial presence
+            await this.updateRPCPresence();
+            
+            this.rpcSettings.enabled = true;
+            this.saveSettings({ ...this.settings, rpcSettings: this.rpcSettings });
+            
+            return { success: true };
+        } catch (error) {
+            console.error('RPC setup error:', error);
+            return { success: false, error: error.message };
+        }
+    }
+    
+    async updateRPC(rpcData) {
+        try {
+            if (!this.rpcClient || !this.rpcSettings.enabled) {
+                return { success: false, error: 'RPC not connected' };
+            }
+            
+            this.rpcSettings = { ...this.rpcSettings, ...rpcData };
+            await this.updateRPCPresence();
+            
+            this.saveSettings({ ...this.settings, rpcSettings: this.rpcSettings });
+            
+            return { success: true };
+        } catch (error) {
+            console.error('RPC update error:', error);
+            return { success: false, error: error.message };
+        }
+    }
+    
+    async updateRPCPresence() {
+        if (!this.rpcClient) return;
+        
+        const activity = {};
+        
+        if (this.rpcSettings.details) activity.details = this.rpcSettings.details;
+        if (this.rpcSettings.state) activity.state = this.rpcSettings.state;
+        if (this.rpcSettings.largeImageKey) {
+            activity.largeImageKey = this.rpcSettings.largeImageKey;
+            if (this.rpcSettings.largeImageText) {
+                activity.largeImageText = this.rpcSettings.largeImageText;
+            }
+        }
+        if (this.rpcSettings.smallImageKey) {
+            activity.smallImageKey = this.rpcSettings.smallImageKey;
+            if (this.rpcSettings.smallImageText) {
+                activity.smallImageText = this.rpcSettings.smallImageText;
+            }
+        }
+        if (this.rpcSettings.startTimestamp) {
+            activity.startTimestamp = this.rpcSettings.startTimestamp;
+        }
+        if (this.rpcSettings.endTimestamp) {
+            activity.endTimestamp = this.rpcSettings.endTimestamp;
+        }
+        if (this.rpcSettings.partySize && this.rpcSettings.partyMax) {
+            activity.partySize = this.rpcSettings.partySize;
+            activity.partyMax = this.rpcSettings.partyMax;
+        }
+        if (this.rpcSettings.buttons && this.rpcSettings.buttons.length > 0) {
+            activity.buttons = this.rpcSettings.buttons;
+        }
+        
+        await this.rpcClient.setActivity(activity);
+    }
+    
+    async disconnectRPC() {
+        try {
+            if (this.rpcClient) {
+                await this.rpcClient.destroy();
+                this.rpcClient = null;
+            }
+            
+            this.rpcSettings.enabled = false;
+            this.saveSettings({ ...this.settings, rpcSettings: this.rpcSettings });
+            
+            return { success: true };
+        } catch (error) {
+            console.error('RPC disconnect error:', error);
+            return { success: false, error: error.message };
+        }
+    }
+    
+    getRPCSettings() {
+        return this.rpcSettings;
+    }
+    
+    getSettings() {
+        return {
+            ...this.settings,
+            messageLogging: this.messageLogger.enabled,
+            antiGhostPing: this.antiGhostPing.enabled,
+            rpcSettings: this.rpcSettings
+        };
+    }
+    
+    saveSettings(settings) {
+        try {
+            this.settings = { ...this.settings, ...settings };
+            const settingsPath = path.join(require('electron').app.getPath('userData'), 'settings.json');
+            fs.writeFileSync(settingsPath, JSON.stringify(this.settings, null, 2));
+            return { success: true };
+        } catch (error) {
+            console.error('Error saving settings:', error);
+            return { success: false, error: error.message };
+        }
+    }
+    
+    loadSettings() {
+        try {
+            const settingsPath = path.join(require('electron').app.getPath('userData'), 'settings.json');
+            if (fs.existsSync(settingsPath)) {
+                const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+                
+                // Apply loaded settings
+                if (settings.messageLogging !== undefined) {
+                    this.messageLogger.enabled = settings.messageLogging;
+                }
+                if (settings.antiGhostPing !== undefined) {
+                    this.antiGhostPing.enabled = settings.antiGhostPing;
+                }
+                if (settings.rpcSettings) {
+                    this.rpcSettings = { ...this.rpcSettings, ...settings.rpcSettings };
+                }
+                
+                return settings;
+            }
+        } catch (error) {
+            console.error('Error loading settings:', error);
+        }
+        return {
+            autoGiveaway: false,
+            statusAnimation: false,
+            messageLogging: true,
+            antiGhostPing: true,
+            notifications: true
+        };
+    }
+    
     initializeGeminiAI(apiKey) {
         try {
             this.geminiAI = new GoogleGenerativeAI(apiKey);
+            this.settings = this.settings || {};
+            this.settings.geminiApiKey = apiKey;
+            this.saveSettings(this.settings);
             return { success: true };
         } catch (error) {
             return { success: false, error: error.message };
@@ -1147,22 +1350,25 @@ class DiscordClient {
                 case 'afk':
                     await this.client.user.setAFK(value);
                     break;
-                case 'customStatus':
-                    if (value) {
-                        await this.client.user.setActivity(value, { type: 'CUSTOM' });
-                    } else {
-                        await this.client.user.setActivity(null);
-                    }
-                    break;
                 case 'autoGiveaway':
                     // Store setting for giveaway auto-join
                     this.settings = this.settings || {};
                     this.settings.autoGiveaway = value;
+                    this.saveSettings(this.settings);
                     break;
                 case 'statusAnimation':
                     this.settings = this.settings || {};
                     this.settings.statusAnimation = value;
+                    this.saveSettings(this.settings);
                     break;
+                case 'messageLogging':
+                    this.messageLogger.enabled = value;
+                    this.settings = this.settings || {};
+                    this.settings.messageLogging = value;
+                    this.saveSettings(this.settings);
+                    break;
+                case 'antiGhostPing':
+                    this.antiGhostPing.enabled = value;
                 default:
                     return { success: false, error: 'Unknown setting' };
             }
