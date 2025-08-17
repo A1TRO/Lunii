@@ -42,6 +42,9 @@ class DiscordClient {
             logs: []
         };
         this.messageTemplates = this.loadMessageTemplates();
+        this.channelMessages = new Map(); // Store messages by channel ID
+        this.dmMessages = new Map(); // Store DM messages by user ID
+        this.typingUsers = new Map(); // Track typing users
         
         this.setupIPC();
     }
@@ -182,6 +185,35 @@ class DiscordClient {
             return this.deleteMessageTemplate(templateId);
         });
         
+        // Handle chat functionality
+        ipcMain.handle('discord-get-channel-messages', (event, channelId, limit = 50) => {
+            return this.getChannelMessages(channelId, limit);
+        });
+        
+        ipcMain.handle('discord-get-dm-messages', (event, userId, limit = 50) => {
+            return this.getDMMessages(userId, limit);
+        });
+        
+        ipcMain.handle('discord-send-channel-message', async (event, channelId, content, options = {}) => {
+            return await this.sendChannelMessage(channelId, content, options);
+        });
+        
+        ipcMain.handle('discord-send-dm-message', async (event, userId, content, options = {}) => {
+            return await this.sendDMMessage(userId, content, options);
+        });
+        
+        ipcMain.handle('discord-start-typing', async (event, channelId) => {
+            return await this.startTyping(channelId);
+        });
+        
+        ipcMain.handle('discord-get-guild-channels', (event, guildId) => {
+            return this.getGuildChannels(guildId);
+        });
+        
+        ipcMain.handle('discord-get-guild-members', (event, guildId) => {
+            return this.getGuildMembers(guildId);
+        });
+        
         // Handle Gemini AI
         ipcMain.handle('discord-setup-gemini', (event, apiKey) => {
             return this.initializeGeminiAI(apiKey);
@@ -299,8 +331,14 @@ class DiscordClient {
         this.client.on('messageCreate', (message) => {
             this.stats.messagesReceived++;
             
+            // Store message in appropriate cache
+            this.cacheMessage(message);
+            
             // Log message
             this.logMessage(message);
+            
+            // Send real-time message update to renderer
+            this.sendMessageUpdate(message);
             
             // Check for mentions
             if (message.mentions.has(this.client.user)) {
@@ -364,18 +402,48 @@ class DiscordClient {
         
         // Message update events
         this.client.on('messageUpdate', (oldMessage, newMessage) => {
+            // Update cached message
+            this.updateCachedMessage(newMessage);
+            
+            // Send update to renderer
+            this.sendMessageUpdate(newMessage, 'update');
+            
             if (oldMessage.mentions?.has(this.client.user) && !newMessage.mentions?.has(this.client.user)) {
                 // Mention was removed - potential ghost ping
                 this.logGhostPing(oldMessage, 'edited');
             }
         });
+        
+        // Message delete events
+        this.client.on('messageDelete', (message) => {
+            // Remove from cache
+            this.removeCachedMessage(message);
+            
+            // Send delete update to renderer
+            this.sendMessageUpdate(message, 'delete');
+            
+            if (this.antiGhostPing.enabled && message.mentions?.has(this.client.user)) {
+                this.logGhostPing(message);
+            }
+        });
+        
+        // Typing events
+        this.client.on('typingStart', (typing) => {
+            if (typing.user.id !== this.client.user.id) {
+                this.handleTypingStart(typing);
+            }
+        });
 
         // Presence updates
         this.client.on('presenceUpdate', (oldPresence, newPresence) => {
-            if (this.userCache.has(newPresence.userId)) {
+            if (newPresence && this.userCache.has(newPresence.userId)) {
                 const cached = this.userCache.get(newPresence.userId);
                 cached.status = newPresence.status;
+                cached.activities = newPresence.activities;
                 this.userCache.set(newPresence.userId, cached);
+                
+                // Send presence update to renderer
+                this.sendPresenceUpdate(newPresence);
             }
         });
 
@@ -893,9 +961,471 @@ class DiscordClient {
         
         return badges;
     }
+    cacheMessage(message) {
+        const messageData = this.formatMessageForCache(message);
+        
+        if (message.guild) {
+            // Guild channel message
+            if (!this.channelMessages.has(message.channel.id)) {
+                this.channelMessages.set(message.channel.id, []);
+            }
+            const messages = this.channelMessages.get(message.channel.id);
+            messages.unshift(messageData);
+            
+            // Keep only last 100 messages per channel
+            if (messages.length > 100) {
+                messages.splice(100);
+            }
+        } else {
+            // DM message
+            const otherUserId = message.author.id === this.client.user.id ? 
+                message.channel.recipient?.id : message.author.id;
+            
+            if (otherUserId) {
+                if (!this.dmMessages.has(otherUserId)) {
+                    this.dmMessages.set(otherUserId, []);
+                }
+                const messages = this.dmMessages.get(otherUserId);
+                messages.unshift(messageData);
+                
+                // Keep only last 100 messages per DM
+                if (messages.length > 100) {
+                    messages.splice(100);
+                }
+            }
+        }
+    }
+    
+    updateCachedMessage(message) {
+        const messageData = this.formatMessageForCache(message);
+        const channelId = message.channel.id;
+        
+        if (message.guild && this.channelMessages.has(channelId)) {
+            const messages = this.channelMessages.get(channelId);
+            const index = messages.findIndex(m => m.id === message.id);
+            if (index !== -1) {
+                messages[index] = messageData;
+            }
+        } else if (!message.guild) {
+            const otherUserId = message.author.id === this.client.user.id ? 
+                message.channel.recipient?.id : message.author.id;
+            
+            if (otherUserId && this.dmMessages.has(otherUserId)) {
+                const messages = this.dmMessages.get(otherUserId);
+                const index = messages.findIndex(m => m.id === message.id);
+                if (index !== -1) {
+                    messages[index] = messageData;
+                }
+            }
+        }
+    }
+    
+    removeCachedMessage(message) {
+        const channelId = message.channel.id;
+        
+        if (message.guild && this.channelMessages.has(channelId)) {
+            const messages = this.channelMessages.get(channelId);
+            const index = messages.findIndex(m => m.id === message.id);
+            if (index !== -1) {
+                messages.splice(index, 1);
+            }
+        } else if (!message.guild) {
+            const otherUserId = message.author.id === this.client.user.id ? 
+                message.channel.recipient?.id : message.author.id;
+            
+            if (otherUserId && this.dmMessages.has(otherUserId)) {
+                const messages = this.dmMessages.get(otherUserId);
+                const index = messages.findIndex(m => m.id === message.id);
+                if (index !== -1) {
+                    messages.splice(index, 1);
+                }
+            }
+        }
+    }
+    
+    formatMessageForCache(message) {
+        return {
+            id: message.id,
+            content: message.content,
+            author: {
+                id: message.author.id,
+                username: message.author.username,
+                displayName: message.author.displayName || message.author.globalName,
+                discriminator: message.author.discriminator,
+                avatar: message.author.displayAvatarURL({ size: 128 }),
+                bot: message.author.bot
+            },
+            timestamp: message.createdTimestamp,
+            editedTimestamp: message.editedTimestamp,
+            attachments: message.attachments.map(att => ({
+                id: att.id,
+                name: att.name,
+                url: att.url,
+                proxyURL: att.proxyURL,
+                size: att.size,
+                width: att.width,
+                height: att.height,
+                contentType: att.contentType
+            })),
+            embeds: message.embeds.map(embed => ({
+                title: embed.title,
+                description: embed.description,
+                url: embed.url,
+                color: embed.color,
+                image: embed.image,
+                thumbnail: embed.thumbnail,
+                video: embed.video,
+                author: embed.author,
+                fields: embed.fields
+            })),
+            reactions: message.reactions.cache.map(reaction => ({
+                emoji: {
+                    id: reaction.emoji.id,
+                    name: reaction.emoji.name,
+                    animated: reaction.emoji.animated
+                },
+                count: reaction.count,
+                me: reaction.me
+            })),
+            mentions: {
+                users: message.mentions.users.map(user => ({
+                    id: user.id,
+                    username: user.username,
+                    displayName: user.displayName || user.globalName
+                })),
+                roles: message.mentions.roles.map(role => ({
+                    id: role.id,
+                    name: role.name,
+                    color: role.hexColor
+                })),
+                everyone: message.mentions.everyone
+            },
+            stickers: message.stickers.map(sticker => ({
+                id: sticker.id,
+                name: sticker.name,
+                description: sticker.description,
+                url: sticker.url
+            })),
+            type: message.type,
+            system: message.system,
+            pinned: message.pinned
+        };
+    }
+    
+    sendMessageUpdate(message, type = 'create') {
+        const { BrowserWindow } = require('electron');
+        const windows = BrowserWindow.getAllWindows();
+        
+        windows.forEach(window => {
+            window.webContents.send('discord-message-update', {
+                type,
+                message: type === 'delete' ? { id: message.id, channelId: message.channel.id } : this.formatMessageForCache(message),
+                channelId: message.channel.id,
+                guildId: message.guild?.id || null
+            });
+        });
+    }
+    
+    sendPresenceUpdate(presence) {
+        const { BrowserWindow } = require('electron');
+        const windows = BrowserWindow.getAllWindows();
+        
+        windows.forEach(window => {
+            window.webContents.send('discord-presence-update', {
+                userId: presence.userId,
+                status: presence.status,
+                activities: presence.activities
+            });
+        });
+    }
+    
+    handleTypingStart(typing) {
+        const channelId = typing.channel.id;
+        
+        if (!this.typingUsers.has(channelId)) {
+            this.typingUsers.set(channelId, new Set());
+        }
+        
+        const typingSet = this.typingUsers.get(channelId);
+        typingSet.add(typing.user.id);
+        
+        // Send typing update to renderer
+        const { BrowserWindow } = require('electron');
+        const windows = BrowserWindow.getAllWindows();
+        
+        windows.forEach(window => {
+            window.webContents.send('discord-typing-update', {
+                channelId,
+                userId: typing.user.id,
+                user: {
+                    id: typing.user.id,
+                    username: typing.user.username,
+                    displayName: typing.user.displayName || typing.user.globalName
+                }
+            });
+        });
+        
+        // Remove typing after 10 seconds
+        setTimeout(() => {
+            if (this.typingUsers.has(channelId)) {
+                const typingSet = this.typingUsers.get(channelId);
+                typingSet.delete(typing.user.id);
+                
+                windows.forEach(window => {
+                    window.webContents.send('discord-typing-stop', {
+                        channelId,
+                        userId: typing.user.id
+                    });
+                });
+            }
+        }, 10000);
+    }
+    
+    async getChannelMessages(channelId, limit = 50) {
+        try {
+            const channel = this.client.channels.cache.get(channelId);
+            if (!channel) return { success: false, error: 'Channel not found' };
+            
+            // Return cached messages if available
+            if (this.channelMessages.has(channelId)) {
+                const cached = this.channelMessages.get(channelId);
+                return { 
+                    success: true, 
+                    messages: cached.slice(0, limit),
+                    cached: true
+                };
+            }
+            
+            // Fetch messages from Discord
+            const messages = await channel.messages.fetch({ limit });
+            const formattedMessages = messages.map(msg => this.formatMessageForCache(msg));
+            
+            // Cache the messages
+            this.channelMessages.set(channelId, formattedMessages);
+            
+            return { 
+                success: true, 
+                messages: formattedMessages,
+                cached: false
+            };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+    
+    async getDMMessages(userId, limit = 50) {
+        try {
+            const user = this.client.users.cache.get(userId);
+            if (!user) return { success: false, error: 'User not found' };
+            
+            // Return cached messages if available
+            if (this.dmMessages.has(userId)) {
+                const cached = this.dmMessages.get(userId);
+                return { 
+                    success: true, 
+                    messages: cached.slice(0, limit),
+                    cached: true
+                };
+            }
+            
+            // Create DM channel and fetch messages
+            const dmChannel = await user.createDM();
+            const messages = await dmChannel.messages.fetch({ limit });
+            const formattedMessages = messages.map(msg => this.formatMessageForCache(msg));
+            
+            // Cache the messages
+            this.dmMessages.set(userId, formattedMessages);
+            
+            return { 
+                success: true, 
+                messages: formattedMessages,
+                cached: false
+            };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+    
+    async sendChannelMessage(channelId, content, options = {}) {
+        try {
+            const channel = this.client.channels.cache.get(channelId);
+            if (!channel) return { success: false, error: 'Channel not found' };
+            
+            const messageOptions = {
+                content: content
+            };
+            
+            if (options.embeds) messageOptions.embeds = options.embeds;
+            if (options.files) messageOptions.files = options.files;
+            if (options.stickers) messageOptions.stickers = options.stickers;
+            
+            const sentMessage = await channel.send(messageOptions);
+            this.incrementCommandUsage();
+            
+            return {
+                success: true,
+                message: this.formatMessageForCache(sentMessage)
+            };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+    
+    async sendDMMessage(userId, content, options = {}) {
+        try {
+            const user = this.client.users.cache.get(userId);
+            if (!user) return { success: false, error: 'User not found' };
+            
+            const dmChannel = await user.createDM();
+            
+            const messageOptions = {
+                content: content
+            };
+            
+            if (options.embeds) messageOptions.embeds = options.embeds;
+            if (options.files) messageOptions.files = options.files;
+            if (options.stickers) messageOptions.stickers = options.stickers;
+            
+            const sentMessage = await dmChannel.send(messageOptions);
+            this.incrementCommandUsage();
+            
+            return {
+                success: true,
+                message: this.formatMessageForCache(sentMessage)
+            };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+    
+    async startTyping(channelId) {
+        try {
+            const channel = this.client.channels.cache.get(channelId);
+            if (!channel) return { success: false, error: 'Channel not found' };
+            
+            await channel.sendTyping();
+            return { success: true };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+    
+    getGuildChannels(guildId) {
+        try {
+            const guild = this.client.guilds.cache.get(guildId);
+            if (!guild) return { success: false, error: 'Guild not found' };
+            
+            const channels = guild.channels.cache
+                .filter(channel => channel.type === 0 || channel.type === 2) // Text and Voice channels
+                .map(channel => ({
+                    id: channel.id,
+                    name: channel.name,
+                    type: channel.type === 0 ? 'text' : 'voice',
+                    position: channel.position,
+                    parentId: channel.parentId,
+                    parent: channel.parent ? {
+                        id: channel.parent.id,
+                        name: channel.parent.name
+                    } : null,
+                    nsfw: channel.nsfw || false,
+                    topic: channel.topic || null,
+                    permissions: channel.permissionsFor(this.client.user)?.toArray() || []
+                }))
+                .sort((a, b) => a.position - b.position);
+            
+            // Group channels by category
+            const categories = guild.channels.cache
+                .filter(channel => channel.type === 4) // Category channels
+                .map(category => ({
+                    id: category.id,
+                    name: category.name,
+                    position: category.position,
+                    channels: channels.filter(ch => ch.parentId === category.id)
+                }))
+                .sort((a, b) => a.position - b.position);
+            
+            const uncategorized = channels.filter(ch => !ch.parentId);
+            
+            return { 
+                success: true, 
+                channels: {
+                    categories,
+                    uncategorized
+                }
+            };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+    
+    getGuildMembers(guildId) {
+        try {
+            const guild = this.client.guilds.cache.get(guildId);
+            if (!guild) return { success: false, error: 'Guild not found' };
+            
+            const members = guild.members.cache.map(member => ({
+                id: member.id,
+                user: {
+                    id: member.user.id,
+                    username: member.user.username,
+                    displayName: member.user.displayName || member.user.globalName,
+                    discriminator: member.user.discriminator,
+                    avatar: member.user.displayAvatarURL({ size: 128 }),
+                    bot: member.user.bot
+                },
+                nickname: member.nickname,
+                displayName: member.displayName,
+                joinedAt: member.joinedAt,
+                roles: member.roles.cache
+                    .filter(role => role.id !== guild.id) // Exclude @everyone role
+                    .map(role => ({
+                        id: role.id,
+                        name: role.name,
+                        color: role.hexColor,
+                        position: role.position
+                    }))
+                    .sort((a, b) => b.position - a.position),
+                permissions: member.permissions.toArray(),
+                presence: member.presence ? {
+                    status: member.presence.status,
+                    activities: member.presence.activities.map(activity => ({
+                        name: activity.name,
+                        type: activity.type,
+                        details: activity.details,
+                        state: activity.state
+                    }))
+                } : { status: 'offline', activities: [] }
+            }))
+            .sort((a, b) => {
+                // Sort by status (online first), then by display name
+                const statusOrder = { online: 0, idle: 1, dnd: 2, offline: 3 };
+                const aStatus = statusOrder[a.presence.status] || 3;
+                const bStatus = statusOrder[b.presence.status] || 3;
+                
+                if (aStatus !== bStatus) return aStatus - bStatus;
+                return a.displayName.localeCompare(b.displayName);
+            });
+            
+            return { success: true, members };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
     
     getFriends() {
-        return Array.from(this.userCache.values());
+        const friends = Array.from(this.userCache.values()).map(friend => {
+            // Get real-time presence if available
+            const user = this.client.users.cache.get(friend.id);
+            const presence = user?.presence;
+            
+            return {
+                ...friend,
+                status: presence?.status || 'offline',
+                activities: presence?.activities || []
+            };
+        });
+        
+        return friends;
     }
     
     getServers() {
@@ -915,7 +1445,8 @@ class DiscordClient {
                 id: channel.id,
                 name: channel.name,
                 type: channel.type,
-                position: channel.position
+                position: channel.position,
+                parentId: channel.parentId
             })),
             emojis: guild.emojis.cache.map(emoji => ({
                 id: emoji.id,
@@ -933,7 +1464,8 @@ class DiscordClient {
                 id: role.id,
                 name: role.name,
                 color: role.hexColor,
-                position: role.position
+                position: role.position,
+                permissions: role.permissions.toArray()
             }))
         };
     }
