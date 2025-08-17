@@ -65,10 +65,10 @@ class LoginManager {
     isValidTokenFormat(token) {
         if (!token || typeof token !== 'string') return false;
     
-        // Discord token: three parts separated by dots
-        // Each part: letters, numbers, -, _
-        const discordTokenPattern = /^[\w-]+\.[\w-]+\.[\w-]+$/;
-        return discordTokenPattern.test(token);
+        // Discord bot token format: starts with Bot prefix or just the token
+        // Bot tokens are longer and contain base64-like characters
+        const botTokenPattern = /^[A-Za-z0-9._-]{50,}$/;
+        return botTokenPattern.test(token.replace(/^Bot\s+/i, ''));
     }
     
     
@@ -125,18 +125,20 @@ class LoginManager {
 
     async showTokenHelp() {
         await Modal.alert({
-            title: 'How to Get Your Discord Token',
-            message: 'Follow these steps to obtain your Discord token:',
-            details: `1. Open Discord in your browser
-2. Press F12 to open Developer Tools
-3. Go to the Network tab
-4. Send a message in any channel
-5. Look for a request to "messages"
-6. In the request headers, find "Authorization"
-7. Copy the value after "Authorization: "
+            title: 'How to Get Your Discord Bot Token',
+            message: 'Follow these steps to create a Discord bot and get your token:',
+            details: `1. Go to https://discord.com/developers/applications
+2. Click "New Application" and give it a name
+3. Go to the "Bot" section in the left sidebar
+4. Click "Add Bot" to create a bot user
+5. Under "Token", click "Copy" to get your bot token
+6. Invite your bot to servers using the OAuth2 URL Generator
 
-⚠️ Warning: Never share your token with others!
-Your token gives full access to your Discord account.`,
+⚠️ Warning: Never share your bot token with others!
+Your bot token gives full access to your Discord bot.
+
+Note: This application now uses the official Discord API with bot tokens,
+which is compliant with Discord's Terms of Service.`,
             type: 'warning',
             confirmText: 'Got it'
         });
