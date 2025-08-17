@@ -321,6 +321,22 @@
                     <div class="greeting">
                         <h1>Automation</h1>
                     </div>
+                    <div class="header-actions">
+                        <div class="toggle-item">
+                            <span>Message Logging</span>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="message-logging-main-toggle">
+                                <label for="message-logging-main-toggle"></label>
+                            </div>
+                        </div>
+                        <div class="toggle-item">
+                            <span>Ghost Ping Logging</span>
+                            <div class="toggle-switch">
+                                <input type="checkbox" id="ghost-ping-logging-main-toggle">
+                                <label for="ghost-ping-logging-main-toggle"></label>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="automation-settings">
                     <!-- Auto Giveaway Configuration -->
@@ -599,6 +615,64 @@
         <!-- Context menu items will be populated dynamically -->
     </div>
 
+    <!-- Image Modal -->
+    <style>
+        .image-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10001;
+        }
+        
+        .image-modal-overlay {
+            position: relative;
+            max-width: 90vw;
+            max-height: 90vh;
+        }
+        
+        .image-modal-content img {
+            max-width: 100%;
+            max-height: 90vh;
+            object-fit: contain;
+            border-radius: 8px;
+        }
+        
+        .image-modal-close {
+            position: absolute;
+            top: -40px;
+            right: 0;
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .custom-emoji {
+            width: 20px;
+            height: 20px;
+            vertical-align: middle;
+            margin: 0 2px;
+        }
+        
+        .emoji {
+            font-size: 18px;
+            vertical-align: middle;
+        }
+    </style>
+
     <!-- Chat Input Template -->
     <template id="chat-input-template">
         <div class="chat-input-container">
@@ -649,6 +723,17 @@
             updateDiscordSetting: (setting, value) => ipcRenderer.invoke('discord-update-setting', setting, value),
             getDiscordFriends: () => ipcRenderer.invoke('discord-get-friends'),
             getDiscordServers: () => ipcRenderer.invoke('discord-get-servers'),
+            
+            // Friend management
+            unblockUser: (userId) => ipcRenderer.invoke('discord-unblock-user', userId),
+            acceptFriendRequest: (userId) => ipcRenderer.invoke('discord-accept-friend-request', userId),
+            declineFriendRequest: (userId) => ipcRenderer.invoke('discord-decline-friend-request', userId),
+            
+            // Server management
+            createServerInvite: (serverId) => ipcRenderer.invoke('discord-create-server-invite', serverId),
+            
+            // AI Integration
+            testGeminiConnection: (apiKey) => ipcRenderer.invoke('test-gemini-connection', apiKey),
             
             // Chat functionality
             getChannelMessages: (channelId, limit) => ipcRenderer.invoke('discord-get-channel-messages', channelId, limit),

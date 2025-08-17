@@ -4,6 +4,8 @@ class DashboardManager {
         this.userData = null;
         this.stats = null;
         this.friends = [];
+        this.blockedUsers = [];
+        this.pendingFriends = [];
         this.servers = [];
         this.notifications = [];
         this.currentChat = null;
@@ -12,11 +14,41 @@ class DashboardManager {
         this.messages = new Map();
         this.typingUsers = new Map();
         this.contextMenu = null;
+        this.currentFriendsFilter = 'all';
+        this.messageLogging = false;
+        this.ghostPingLogging = false;
+        this.automationSettings = {
+            autoGiveaway: {
+                enabled: false,
+                keywords: ['🎉', 'giveaway', 'react', 'win', 'prize'],
+                emojis: ['🎉', '🎊', '🎁', '✨'],
+                minDelay: 1000,
+                maxDelay: 5000,
+                maxPerHour: 10,
+                verifiedOnly: true,
+                requireKeywords: true
+            },
+            afkAutoReply: {
+                enabled: false,
+                message: "I'm currently AFK. I'll get back to you soon!",
+                timeout: 5,
+                responseLimit: 3,
+                autoDetection: true,
+                aiEnabled: false
+            },
+            statusAnimation: {
+                enabled: false,
+                interval: 30,
+                randomOrder: false,
+                messages: []
+            }
+        };
         
         this.init();
     }
 
     init() {
+        this.loadAutomationSettings();
         this.setupEventListeners();
         this.setupWindowControls();
         this.loadUserData();
@@ -70,6 +102,9 @@ class DashboardManager {
             this.clearNotifications();
         });
 
+        // Friends filter tabs
+        this.setupFriendsFilter();
+
         // Close server view
         document.getElementById('close-server-btn').addEventListener('click', () => {
             this.closeServerView();
@@ -92,6 +127,180 @@ class DashboardManager {
                     this.closeServerView();
                 }
             }
+        });
+
+        // Automation settings
+        this.setupAutomationSettings();
+
+        // Log type tabs
+        this.setupLogTabs();
+
+        // Settings
+        this.setupSettings();
+    }
+
+    setupFriendsFilter() {
+        // Create filter tabs if they don't exist
+        const friendsPage = document.getElementById('friends-page');
+        const headerActions = friendsPage.querySelector('.header-actions');
+        
+        if (!headerActions.querySelector('.friends-filter')) {
+            const filterContainer = document.createElement('div');
+            filterContainer.className = 'friends-filter';
+            filterContainer.innerHTML = `
+                <button class="filter-tab active" data-filter="all">All</button>
+                <button class="filter-tab" data-filter="online">Online</button>
+                <button class="filter-tab" data-filter="pending">Pending</button>
+                <button class="filter-tab" data-filter="blocked">Blocked</button>
+            `;
+            
+            headerActions.insertBefore(filterContainer, headerActions.firstChild);
+            
+            // Add event listeners
+            filterContainer.addEventListener('click', (e) => {
+                if (e.target.classList.contains('filter-tab')) {
+                    document.querySelectorAll('.filter-tab').forEach(tab => tab.classList.remove('active'));
+                    e.target.classList.add('active');
+                    this.currentFriendsFilter = e.target.dataset.filter;
+                    this.renderFriends();
+                }
+            });
+        }
+    }
+
+    setupAutomationSettings() {
+        // Auto Giveaway Configuration
+        document.getElementById('configure-giveaway-btn').addEventListener('click', () => {
+            this.showGiveawayConfig();
+        });
+
+        document.getElementById('giveaway-cancel-btn').addEventListener('click', () => {
+            this.hideGiveawayConfig();
+        });
+
+        document.getElementById('giveaway-save-btn').addEventListener('click', () => {
+            this.saveGiveawayConfig();
+        });
+
+        // AFK Auto Reply Configuration
+        document.getElementById('configure-afk-btn').addEventListener('click', () => {
+            this.showAfkConfig();
+        });
+
+        document.getElementById('afk-cancel-btn').addEventListener('click', () => {
+            this.hideAfkConfig();
+        });
+
+        document.getElementById('afk-save-btn').addEventListener('click', () => {
+            this.saveAfkConfig();
+        });
+
+        // Status Animation Configuration
+        document.getElementById('configure-status-btn').addEventListener('click', () => {
+            this.showStatusConfig();
+        });
+
+        document.getElementById('status-cancel-btn').addEventListener('click', () => {
+            this.hideStatusConfig();
+        });
+
+        document.getElementById('status-save-btn').addEventListener('click', () => {
+            this.saveStatusConfig();
+        });
+
+        document.getElementById('add-status-message-btn').addEventListener('click', () => {
+            this.addStatusMessage();
+        });
+
+        // Feature toggles
+        document.getElementById('auto-giveaway-feature').addEventListener('change', (e) => {
+            this.automationSettings.autoGiveaway.enabled = e.target.checked;
+            this.saveAutomationSettings();
+        });
+
+        document.getElementById('afk-auto-reply-feature').addEventListener('change', (e) => {
+            this.automationSettings.afkAutoReply.enabled = e.target.checked;
+            this.saveAutomationSettings();
+        });
+
+        document.getElementById('status-animation-feature').addEventListener('change', (e) => {
+            this.automationSettings.statusAnimation.enabled = e.target.checked;
+            this.saveAutomationSettings();
+        });
+    }
+
+    setupLogTabs() {
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const logType = e.target.dataset.logType;
+                this.switchLogTab(logType);
+            });
+        });
+
+        // Log actions
+        document.getElementById('refresh-message-logs').addEventListener('click', () => {
+            this.refreshMessageLogs();
+        });
+
+        document.getElementById('clear-message-logs').addEventListener('click', () => {
+            this.clearMessageLogs();
+        });
+
+        document.getElementById('refresh-ghost-ping-logs').addEventListener('click', () => {
+            this.refreshGhostPingLogs();
+        });
+
+        document.getElementById('clear-ghost-ping-logs').addEventListener('click', () => {
+            this.clearGhostPingLogs();
+        });
+    }
+
+    setupSettings() {
+        // Gemini AI settings
+        document.getElementById('save-gemini-settings').addEventListener('click', () => {
+            this.saveGeminiSettings();
+        });
+
+        document.getElementById('test-gemini-connection').addEventListener('click', () => {
+            this.testGeminiConnection();
+        });
+
+        // Message logging toggle
+        const messageLoggingToggle = document.createElement('div');
+        messageLoggingToggle.className = 'setting-item';
+        messageLoggingToggle.innerHTML = `
+            <span>Message Logging</span>
+            <div class="toggle-switch">
+                <input type="checkbox" id="message-logging-toggle">
+                <label for="message-logging-toggle"></label>
+            </div>
+        `;
+        
+        const generalSettings = document.querySelector('.settings-section');
+        generalSettings.appendChild(messageLoggingToggle);
+
+        // Ghost ping logging toggle
+        const ghostPingLoggingToggle = document.createElement('div');
+        ghostPingLoggingToggle.className = 'setting-item';
+        ghostPingLoggingToggle.innerHTML = `
+            <span>Ghost Ping Logging</span>
+            <div class="toggle-switch">
+                <input type="checkbox" id="ghost-ping-logging-toggle">
+                <label for="ghost-ping-logging-toggle"></label>
+            </div>
+        `;
+        
+        generalSettings.appendChild(ghostPingLoggingToggle);
+
+        // Add event listeners
+        document.getElementById('message-logging-toggle').addEventListener('change', (e) => {
+            this.messageLogging = e.target.checked;
+            window.electronAPI.updateDiscordSetting('messageLogging', this.messageLogging);
+        });
+
+        document.getElementById('ghost-ping-logging-toggle').addEventListener('change', (e) => {
+            this.ghostPingLogging = e.target.checked;
+            window.electronAPI.updateDiscordSetting('ghostPingLogging', this.ghostPingLogging);
         });
     }
 
@@ -170,7 +379,10 @@ class DashboardManager {
 
     async loadFriends() {
         try {
-            this.friends = await window.electronAPI.getDiscordFriends();
+            const friendsData = await window.electronAPI.getDiscordFriends();
+            this.friends = friendsData.friends || [];
+            this.blockedUsers = friendsData.blocked || [];
+            this.pendingFriends = friendsData.pending || [];
             this.renderFriends();
         } catch (error) {
             console.error('Error loading friends:', error);
@@ -191,17 +403,34 @@ class DashboardManager {
         const friendsList = document.getElementById('friends-list');
         friendsList.innerHTML = '';
 
-        if (this.friends.length === 0) {
+        let displayFriends = [];
+        
+        switch (this.currentFriendsFilter) {
+            case 'all':
+                displayFriends = this.friends;
+                break;
+            case 'online':
+                displayFriends = this.friends.filter(friend => friend.status === 'online');
+                break;
+            case 'pending':
+                displayFriends = this.pendingFriends;
+                break;
+            case 'blocked':
+                displayFriends = this.blockedUsers;
+                break;
+        }
+
+        if (displayFriends.length === 0) {
             friendsList.innerHTML = `
                 <div class="empty-state">
-                    <p>No friends found</p>
-                    <span>Add some friends on Discord!</span>
+                    <p>No ${this.currentFriendsFilter} friends found</p>
+                    <span>${this.getFriendsEmptyMessage()}</span>
                 </div>
             `;
             return;
         }
 
-        this.friends.forEach(friend => {
+        displayFriends.forEach(friend => {
             const friendEl = this.createFriendElement(friend);
             friendsList.appendChild(friendEl);
         });
@@ -236,6 +465,24 @@ class DashboardManager {
                         <path fill-rule="evenodd" d="M1.5 1.5A.5.5 0 012 1h12a.5.5 0 01.5.5v9a.5.5 0 01-.5.5H5.707l-3.853 3.854a.5.5 0 01-.854-.353V1.5z"/>
                     </svg>
                 </button>
+                ${this.currentFriendsFilter === 'blocked' ? 
+                    `<button class="friend-action-btn unblock" title="Unblock User">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zM8 2a6 6 0 0 0-4.24 10.24L12.24 3.76A5.98 5.98 0 0 0 8 2zm4.24 1.76L3.76 12.24A6 6 0 0 0 12.24 3.76z"/>
+                        </svg>
+                    </button>` :
+                    this.currentFriendsFilter === 'pending' ?
+                    `<button class="friend-action-btn accept" title="Accept Friend Request">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.267.267 0 0 1 .02-.022z"/>
+                        </svg>
+                    </button>
+                    <button class="friend-action-btn decline" title="Decline Friend Request">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
+                        </svg>
+                    </button>` : ''
+                }
             </div>
         `;
 
@@ -244,6 +491,31 @@ class DashboardManager {
             e.stopPropagation();
             this.openDMChat(friend);
         });
+
+        // Add listeners for blocked/pending actions
+        const unblockBtn = friendEl.querySelector('.unblock');
+        if (unblockBtn) {
+            unblockBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.unblockUser(friend);
+            });
+        }
+
+        const acceptBtn = friendEl.querySelector('.accept');
+        if (acceptBtn) {
+            acceptBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.acceptFriendRequest(friend);
+            });
+        }
+
+        const declineBtn = friendEl.querySelector('.decline');
+        if (declineBtn) {
+            declineBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.declineFriendRequest(friend);
+            });
+        }
 
         return friendEl;
     }
@@ -285,14 +557,39 @@ class DashboardManager {
                     <h3>${server.name}</h3>
                     <p>${server.memberCount} members</p>
                 </div>
+                <div class="server-actions">
+                    <button class="server-action-btn" title="Create Invite" data-action="invite">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2z"/>
+                        </svg>
+                    </button>
+                    <button class="server-action-btn" title="Server Settings" data-action="settings">
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z"/>
+                            <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319z"/>
+                        </svg>
+                    </button>
+                </div>
             </div>
             <div class="server-stats">
-                <span>Click to view channels</span>
+                <span>${server.channelCount || 0} channels</span>
+                <span>${server.onlineCount || 0} online</span>
             </div>
         `;
 
         serverEl.addEventListener('click', () => {
             this.openServerView(server);
+        });
+
+        // Server action buttons
+        serverEl.querySelector('[data-action="invite"]').addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.createServerInvite(server);
+        });
+
+        serverEl.querySelector('[data-action="settings"]').addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.showServerSettings(server);
         });
 
         return serverEl;
@@ -535,7 +832,7 @@ class DashboardManager {
         if (message.attachments && message.attachments.length > 0) {
             attachmentsHTML = message.attachments.map(att => {
                 if (att.contentType?.startsWith('image/')) {
-                    return `<img class="message-image" src="${att.url}" alt="${att.name}" loading="lazy">`;
+                    return `<img class="message-image" src="${att.url}" alt="${att.name}" loading="lazy" onclick="this.openImageModal('${att.url}')">`;
                 } else if (att.contentType?.startsWith('video/')) {
                     return `<video class="message-video" src="${att.url}" controls></video>`;
                 } else {
@@ -592,21 +889,25 @@ class DashboardManager {
     formatMessageContent(content) {
         if (!content) return '';
 
-        // Format mentions, emojis, etc.
+        // Enhanced markdown and Discord formatting
         return content
+            // Discord mentions
             .replace(/<@!?(\d+)>/g, '<span class="mention">@user</span>')
             .replace(/<@&(\d+)>/g, '<span class="mention role">@role</span>')
             .replace(/<#(\d+)>/g, '<span class="mention channel">#channel</span>')
-            .replace(/:\w+:/g, (match) => {
-                // Simple emoji replacement - in a real app you'd have an emoji database
-                return `<span class="emoji">${match}</span>`;
-            })
+            // Custom emojis
+            .replace(/<a?:(\w+):(\d+)>/g, '<img class="custom-emoji" src="https://cdn.discordapp.com/emojis/$2.png" alt=":$1:" title=":$1:">')
+            // Standard emojis (Unicode)
+            .replace(/(\u00a9|\u00ae|[\u2000-\u3300]|\ud83c[\ud000-\udfff]|\ud83d[\ud000-\udfff]|\ud83e[\ud000-\udfff])/g, '<span class="emoji">$1</span>')
+            // Markdown formatting
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
             .replace(/\*(.*?)\*/g, '<em>$1</em>')
             .replace(/__(.*?)__/g, '<u>$1</u>')
             .replace(/~~(.*?)~~/g, '<del>$1</del>')
+            // Code blocks
             .replace(/`(.*?)`/g, '<code>$1</code>')
-            .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+            .replace(/```(\w+)?\n?([\s\S]*?)```/g, '<pre><code class="language-$1">$2</code></pre>')
+            // Links
             .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank">$1</a>');
     }
 
@@ -940,6 +1241,329 @@ class DashboardManager {
         const sizes = ['Bytes', 'KB', 'MB', 'GB'];
         const i = Math.floor(Math.log(bytes) / Math.log(k));
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    getFriendsEmptyMessage() {
+        switch (this.currentFriendsFilter) {
+            case 'all':
+                return 'Add some friends on Discord!';
+            case 'online':
+                return 'No friends are currently online';
+            case 'pending':
+                return 'No pending friend requests';
+            case 'blocked':
+                return 'No blocked users';
+            default:
+                return 'No friends found';
+        }
+    }
+
+    async unblockUser(user) {
+        try {
+            const result = await window.electronAPI.unblockUser(user.id);
+            if (result.success) {
+                this.loadFriends(); // Refresh friends list
+            }
+        } catch (error) {
+            console.error('Error unblocking user:', error);
+        }
+    }
+
+    async acceptFriendRequest(user) {
+        try {
+            const result = await window.electronAPI.acceptFriendRequest(user.id);
+            if (result.success) {
+                this.loadFriends(); // Refresh friends list
+            }
+        } catch (error) {
+            console.error('Error accepting friend request:', error);
+        }
+    }
+
+    async declineFriendRequest(user) {
+        try {
+            const result = await window.electronAPI.declineFriendRequest(user.id);
+            if (result.success) {
+                this.loadFriends(); // Refresh friends list
+            }
+        } catch (error) {
+            console.error('Error declining friend request:', error);
+        }
+    }
+
+    async createServerInvite(server) {
+        try {
+            const result = await window.electronAPI.createServerInvite(server.id);
+            if (result.success) {
+                // Copy invite to clipboard
+                navigator.clipboard.writeText(result.inviteUrl);
+                this.showToast('Invite created and copied to clipboard!', 'success');
+            }
+        } catch (error) {
+            console.error('Error creating server invite:', error);
+            this.showToast('Failed to create invite', 'error');
+        }
+    }
+
+    showServerSettings(server) {
+        // Show server settings modal (implement as needed)
+        console.log('Show server settings for:', server);
+    }
+
+    openImageModal(imageUrl) {
+        // Create image modal
+        const modal = document.createElement('div');
+        modal.className = 'image-modal';
+        modal.innerHTML = `
+            <div class="image-modal-overlay">
+                <div class="image-modal-content">
+                    <img src="${imageUrl}" alt="Full size image">
+                    <button class="image-modal-close">×</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Close modal on click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal || e.target.classList.contains('image-modal-close')) {
+                modal.remove();
+            }
+        });
+        
+        // Close on escape key
+        const handleEscape = (e) => {
+            if (e.key === 'Escape') {
+                modal.remove();
+                document.removeEventListener('keydown', handleEscape);
+            }
+        };
+        document.addEventListener('keydown', handleEscape);
+    }
+
+    // Automation Configuration Methods
+    showGiveawayConfig() {
+        const panel = document.getElementById('giveaway-config-panel');
+        panel.style.display = 'block';
+        
+        // Populate current settings
+        const settings = this.automationSettings.autoGiveaway;
+        document.getElementById('giveaway-keywords').value = settings.keywords.join(', ');
+        document.getElementById('giveaway-emojis').value = settings.emojis.join(', ');
+        document.getElementById('giveaway-min-delay').value = settings.minDelay;
+        document.getElementById('giveaway-max-delay').value = settings.maxDelay;
+        document.getElementById('giveaway-max-hour').value = settings.maxPerHour;
+        document.getElementById('giveaway-verified-only').checked = settings.verifiedOnly;
+        document.getElementById('giveaway-require-keywords').checked = settings.requireKeywords;
+    }
+
+    hideGiveawayConfig() {
+        document.getElementById('giveaway-config-panel').style.display = 'none';
+    }
+
+    saveGiveawayConfig() {
+        const settings = this.automationSettings.autoGiveaway;
+        settings.keywords = document.getElementById('giveaway-keywords').value.split(',').map(k => k.trim());
+        settings.emojis = document.getElementById('giveaway-emojis').value.split(',').map(e => e.trim());
+        settings.minDelay = parseInt(document.getElementById('giveaway-min-delay').value);
+        settings.maxDelay = parseInt(document.getElementById('giveaway-max-delay').value);
+        settings.maxPerHour = parseInt(document.getElementById('giveaway-max-hour').value);
+        settings.verifiedOnly = document.getElementById('giveaway-verified-only').checked;
+        settings.requireKeywords = document.getElementById('giveaway-require-keywords').checked;
+        
+        this.saveAutomationSettings();
+        this.hideGiveawayConfig();
+        this.showToast('Giveaway settings saved!', 'success');
+    }
+
+    showAfkConfig() {
+        const panel = document.getElementById('afk-config-panel');
+        panel.style.display = 'block';
+        
+        // Populate current settings
+        const settings = this.automationSettings.afkAutoReply;
+        document.getElementById('afk-message').value = settings.message;
+        document.getElementById('afk-timeout').value = settings.timeout;
+        document.getElementById('afk-response-limit').value = settings.responseLimit;
+        document.getElementById('afk-auto-detection').checked = settings.autoDetection;
+        document.getElementById('afk-ai-enabled').checked = settings.aiEnabled;
+    }
+
+    hideAfkConfig() {
+        document.getElementById('afk-config-panel').style.display = 'none';
+    }
+
+    saveAfkConfig() {
+        const settings = this.automationSettings.afkAutoReply;
+        settings.message = document.getElementById('afk-message').value;
+        settings.timeout = parseInt(document.getElementById('afk-timeout').value);
+        settings.responseLimit = parseInt(document.getElementById('afk-response-limit').value);
+        settings.autoDetection = document.getElementById('afk-auto-detection').checked;
+        settings.aiEnabled = document.getElementById('afk-ai-enabled').checked;
+        
+        this.saveAutomationSettings();
+        this.hideAfkConfig();
+        this.showToast('AFK settings saved!', 'success');
+    }
+
+    showStatusConfig() {
+        const panel = document.getElementById('status-config-panel');
+        panel.style.display = 'block';
+        
+        // Populate current settings
+        const settings = this.automationSettings.statusAnimation;
+        document.getElementById('status-interval').value = settings.interval;
+        document.getElementById('status-random-order').checked = settings.randomOrder;
+        
+        this.renderStatusMessages();
+    }
+
+    hideStatusConfig() {
+        document.getElementById('status-config-panel').style.display = 'none';
+    }
+
+    saveStatusConfig() {
+        const settings = this.automationSettings.statusAnimation;
+        settings.interval = parseInt(document.getElementById('status-interval').value);
+        settings.randomOrder = document.getElementById('status-random-order').checked;
+        
+        // Collect status messages
+        const messageInputs = document.querySelectorAll('.status-message-item input');
+        settings.messages = Array.from(messageInputs).map(input => input.value).filter(msg => msg.trim());
+        
+        this.saveAutomationSettings();
+        this.hideStatusConfig();
+        this.showToast('Status animation settings saved!', 'success');
+    }
+
+    renderStatusMessages() {
+        const container = document.getElementById('status-messages-list');
+        container.innerHTML = '';
+        
+        this.automationSettings.statusAnimation.messages.forEach((message, index) => {
+            this.addStatusMessageElement(container, message, index);
+        });
+        
+        // Add empty one if none exist
+        if (this.automationSettings.statusAnimation.messages.length === 0) {
+            this.addStatusMessageElement(container, '', 0);
+        }
+    }
+
+    addStatusMessage() {
+        const container = document.getElementById('status-messages-list');
+        const index = container.children.length;
+        this.addStatusMessageElement(container, '', index);
+    }
+
+    addStatusMessageElement(container, message, index) {
+        const messageEl = document.createElement('div');
+        messageEl.className = 'status-message-item';
+        messageEl.innerHTML = `
+            <input type="text" placeholder="Enter status message..." value="${message}">
+            <button class="remove-status-btn" onclick="this.parentElement.remove()">×</button>
+        `;
+        container.appendChild(messageEl);
+    }
+
+    saveAutomationSettings() {
+        // Save to localStorage or send to main process
+        localStorage.setItem('automationSettings', JSON.stringify(this.automationSettings));
+        window.electronAPI.updateDiscordSetting('automation', this.automationSettings);
+    }
+
+    loadAutomationSettings() {
+        const saved = localStorage.getItem('automationSettings');
+        if (saved) {
+            this.automationSettings = { ...this.automationSettings, ...JSON.parse(saved) };
+        }
+    }
+
+    // Log Management Methods
+    switchLogTab(logType) {
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelector(`[data-log-type="${logType}"]`).classList.add('active');
+        
+        document.querySelectorAll('.logs-section').forEach(section => {
+            section.style.display = 'none';
+        });
+        
+        document.getElementById(`${logType}-logs-section`).style.display = 'block';
+    }
+
+    refreshMessageLogs() {
+        // Implement message log refresh
+        this.showToast('Message logs refreshed', 'info');
+    }
+
+    clearMessageLogs() {
+        // Implement message log clearing
+        this.showToast('Message logs cleared', 'info');
+    }
+
+    refreshGhostPingLogs() {
+        // Implement ghost ping log refresh
+        this.showToast('Ghost ping logs refreshed', 'info');
+    }
+
+    clearGhostPingLogs() {
+        // Implement ghost ping log clearing
+        this.showToast('Ghost ping logs cleared', 'info');
+    }
+
+    // Settings Methods
+    saveGeminiSettings() {
+        const apiKey = document.getElementById('gemini-api-key').value;
+        const enabled = document.getElementById('gemini-enabled').checked;
+        
+        window.electronAPI.updateDiscordSetting('geminiApiKey', apiKey);
+        window.electronAPI.updateDiscordSetting('geminiEnabled', enabled);
+        
+        this.showToast('Gemini settings saved!', 'success');
+    }
+
+    async testGeminiConnection() {
+        const apiKey = document.getElementById('gemini-api-key').value;
+        if (!apiKey) {
+            this.showToast('Please enter an API key first', 'warning');
+            return;
+        }
+        
+        try {
+            const result = await window.electronAPI.testGeminiConnection(apiKey);
+            if (result.success) {
+                this.showToast('Gemini connection successful!', 'success');
+            } else {
+                this.showToast('Gemini connection failed: ' + result.error, 'error');
+            }
+        } catch (error) {
+            this.showToast('Connection test failed', 'error');
+        }
+    }
+
+    showToast(message, type = 'info') {
+        // Simple toast implementation
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.textContent = message;
+        toast.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(15, 23, 42, 0.95);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            z-index: 10000;
+            animation: slideIn 0.3s ease;
+        `;
+        
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.remove();
+        }, 3000);
     }
 
     switchPage(page) {
